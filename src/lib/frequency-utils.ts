@@ -134,3 +134,72 @@ export const INTERVAL_FACTS: Record<number, string[]> = {
     "When you double a frequency, every harmonic of the lower note aligns perfectly with every other harmonic of the upper note. Zero beating. Perfect consonance."
   ],
 };
+
+// Fun facts about specific harmonics, contextual to the spectrum being viewed
+export interface HarmonicFact {
+  text: string;
+  spectrum?: 'hz' | 'log' | 'bark' | 'mel'; // if set, only shown on this spectrum
+}
+
+export const getHarmonicFacts = (degree: number, freq: number, noteName: string): HarmonicFact[] => {
+  const tet = getClosest12TET(freq);
+  const centsOff = Math.abs(tet.cents);
+
+  const facts: HarmonicFact[] = [];
+
+  // Fundamental-specific facts
+  if (degree === 1) {
+    if (freq >= 420 && freq <= 460) {
+      facts.push({ text: `${freq.toFixed(1)} Hz is near concert pitch A4 (440 Hz) — the universal tuning reference adopted in 1955. Before that, 'concert A' varied from 415 Hz to 465 Hz across Europe.` });
+    }
+    if (freq >= 256 && freq <= 264) {
+      facts.push({ text: `This is near 'middle C' (~261.6 Hz) — the centre of the piano keyboard and the reference point for the scientific pitch standard where C4 = 256 Hz exactly.` });
+    }
+    if (freq < 80) {
+      facts.push({ text: `Below 80 Hz, your ear struggles to identify pitch precisely. You feel these frequencies as much as hear them — bass is as much tactile as auditory.`, spectrum: 'hz' });
+      facts.push({ text: `At this low frequency, the Bark scale compresses heavily — your cochlea dedicates very few hair cells to resolving bass, which is why bass notes sound 'muddy' together.`, spectrum: 'bark' });
+    }
+    if (freq > 2000) {
+      facts.push({ text: `Above 2 kHz, your ear is at peak sensitivity — the ear canal resonance amplifies these frequencies by up to 20 dB. This is why high-pitched sounds feel 'louder'.`, spectrum: 'hz' });
+    }
+    facts.push({ text: `The fundamental (H1) at ${freq.toFixed(1)} Hz defines the perceived pitch. All other harmonics add timbre — the colour that distinguishes a guitar from a piano playing the same note.` });
+    if (centsOff > 10) {
+      facts.push({ text: `This frequency is ${tet.cents > 0 ? '+' : ''}${tet.cents.toFixed(1)}¢ from ${tet.name} in equal temperament. Deviations over 10¢ are noticeable to trained ears.`, spectrum: 'log' });
+    }
+  }
+
+  // Harmonic-specific facts
+  if (degree === 2) {
+    facts.push({ text: `The 2nd harmonic (octave) at ${freq.toFixed(1)} Hz is exactly double the fundamental. It reinforces the root pitch and adds warmth and body to the sound.` });
+    facts.push({ text: `On the Bark scale, this harmonic lands at ${toBark(freq).toFixed(1)}z. The wider the Bark gap from H1, the more independently your ear processes it.`, spectrum: 'bark' });
+    facts.push({ text: `On the log scale, octaves are equally spaced — every doubling moves the same visual distance. This is why the log view maps directly to how musicians think about pitch.`, spectrum: 'log' });
+  }
+  if (degree === 3) {
+    facts.push({ text: `The 3rd harmonic (octave + fifth) at ${freq.toFixed(1)} Hz is what gives brass instruments their characteristic 'bright' quality. Trumpets emphasise this partial strongly.` });
+    facts.push({ text: `On the Mel scale, this harmonic at ${toMel(freq).toFixed(0)} mel shows the perceived pitch distance from the fundamental. The Mel scale was derived from listener experiments in the 1930s.`, spectrum: 'mel' });
+  }
+  if (degree === 4) {
+    facts.push({ text: `The 4th harmonic (two octaves up) at ${freq.toFixed(1)} Hz. Clarinets are unusual — they naturally suppress even harmonics, which is why they sound 'hollow' compared to oboes.` });
+  }
+  if (degree === 5) {
+    facts.push({ text: `The 5th harmonic (two octaves + major 3rd) at ${freq.toFixed(1)} Hz creates the 'sweetness' in a sound. It's the basis of the pure major triad in the harmonic series.` });
+    facts.push({ text: `This harmonic is 14 cents flatter than the equal-tempered major 3rd — the difference between 'just' and 'equal' that makes barbershop singing sound uniquely resonant.`, spectrum: 'log' });
+    facts.push({ text: `At ${toBark(freq).toFixed(1)} Bark, the 5th harmonic sits in a region where your ear has excellent frequency resolution — beating with nearby harmonics from other notes is clearly audible here.`, spectrum: 'bark' });
+  }
+  if (degree === 6) {
+    facts.push({ text: `The 6th harmonic (two octaves + fifth) at ${freq.toFixed(1)} Hz. Beyond H6, harmonics contribute increasingly to 'brilliance' and 'edge' rather than perceived pitch.` });
+    if (freq > 4000) {
+      facts.push({ text: `At ${freq.toFixed(0)} Hz, this harmonic enters the region of peak ear sensitivity (2–5 kHz). It contributes significantly to how 'present' and 'bright' the sound feels.`, spectrum: 'hz' });
+    }
+  }
+
+  // Generic frequency-range facts
+  if (freq >= 1000 && freq <= 4000 && degree > 1) {
+    facts.push({ text: `${freq.toFixed(0)} Hz falls in the speech-critical range (1–4 kHz). This is why overtones in this region make instruments 'cut through' a mix — your ear evolved to prioritise these frequencies for language.`, spectrum: 'hz' });
+  }
+  if (freq >= 100 && freq <= 300 && degree === 1) {
+    facts.push({ text: `The ${freq.toFixed(0)} Hz range is the 'warmth' zone in audio engineering. Most male speaking voices have fundamentals here, which is why we find these frequencies comforting.`, spectrum: 'hz' });
+  }
+
+  return facts;
+};
