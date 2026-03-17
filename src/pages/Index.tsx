@@ -1,20 +1,21 @@
 import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { LineChart, XAxis, YAxis, CartesianGrid, ResponsiveContainer, ReferenceLine, Tooltip as RechartsTooltip, Line } from 'recharts';
-import { Activity, Layers, AlertTriangle, X, Lightbulb } from 'lucide-react';
+import { Activity, Layers, AlertTriangle, X, Lightbulb, ExternalLink } from 'lucide-react';
 import {
   MIN_F, MAX_F, HARMONIC_COUNT, INTERVALS, INTERVAL_FACTS,
   midiToFreq, toBark, toMel, getNoteName, getClosest12TET, getVal, getPct,
-  type Harmonic, type Interference,
+  getHarmonicFacts,
+  type Harmonic, type Interference, type HarmonicFact,
 } from '@/lib/frequency-utils';
 
 // HSL values matching CSS vars for inline chart usage
-const COLOR_NOTE_A = 'hsl(185, 100%, 50%)';
-const COLOR_NOTE_B = 'hsl(266, 100%, 50%)';
-const COLOR_BORDER = 'hsl(240, 20%, 14%)';
-const COLOR_PANEL = 'hsl(240, 33%, 3%)';
-const COLOR_BG = 'hsl(240, 33%, 2%)';
-const COLOR_TEXT_MUTED = 'hsl(240, 5%, 65%)';
-const COLOR_GOLD = 'hsl(51, 100%, 50%)';
+const COLOR_NOTE_A = 'hsl(33, 90%, 55%)';
+const COLOR_NOTE_B = 'hsl(200, 60%, 45%)';
+const COLOR_BORDER = 'hsl(0, 0%, 16%)';
+const COLOR_TEXT_MUTED = 'hsl(0, 0%, 55%)';
+const COLOR_GOLD = 'hsl(45, 100%, 60%)';
+
+type SpectrumKey = 'hz' | 'log' | 'bark' | 'mel';
 
 export default function Index() {
   const [midiA, setMidiA] = useState(69);
@@ -26,6 +27,9 @@ export default function Index() {
   const keyboardRef = useRef<HTMLDivElement>(null);
   const [hoveredHarm, setHoveredHarm] = useState<Harmonic | null>(null);
   const [hoverPct, setHoverPct] = useState<number | null>(null);
+  const [harmonicFacts, setHarmonicFacts] = useState<HarmonicFact[]>([]);
+  const [harmonicFactIdx, setHarmonicFactIdx] = useState(0);
+  const [activeSpectrum, setActiveSpectrum] = useState<SpectrumKey | null>(null);
 
   const midiB = useMemo(() => Math.min(108, midiA + stDiff), [midiA, stDiff]);
   const freqA = useMemo(() => midiToFreq(midiA), [midiA]);
@@ -68,22 +72,58 @@ export default function Index() {
     return clashes.sort((a, b) => a.barkDist - b.barkDist);
   }, [activeHarmonics]);
 
-  // Rotate fun facts
-  useEffect(() => {
-    setFactIndex(0);
-  }, [stDiff]);
-
+  // Rotate interval facts
+  useEffect(() => { setFactIndex(0); }, [stDiff]);
   useEffect(() => {
     const facts = INTERVAL_FACTS[stDiff] || INTERVAL_FACTS[0];
     if (facts.length <= 1) return;
-    const timer = setInterval(() => {
-      setFactIndex(prev => (prev + 1) % facts.length);
-    }, 8000);
+    const timer = setInterval(() => setFactIndex(prev => (prev + 1) % facts.length), 8000);
     return () => clearInterval(timer);
   }, [stDiff]);
 
+  // Update harmonic facts when hovered harmonic changes
+  useEffect(() => {
+    if (!hoveredHarm) { setHarmonicFacts([]); return; }
+    const noteName = hoveredHarm.note === 'A' ? getNoteName(midiA) : getNoteName(midiB);
+    const allFacts = getHarmonicFacts(hoveredHarm.degree, hoveredHarm.freq, noteName);
+    // Filter by active spectrum if set
+    const filtered = allFacts.filter(f => !f.spectrum || f.spectrum === activeSpectrum);
+    setHarmonicFacts(filtered);
+    setHarmonicFactIdx(0);
+  }, [hoveredHarm, activeSpectrum, midiA, midiB]);
+
   const currentFact = (INTERVAL_FACTS[stDiff] || INTERVAL_FACTS[0])[factIndex] || '';
   const currentIntervalName = INTERVALS.find(iv => iv.semi === stDiff)?.full || 'Interval';
+
+  const handleChartHover = useCallback((dataKey: SpectrumKey, e: React.MouseEvent, containerRef: HTMLDivElement | null) => {
+    if (!containerRef) return;
+    const rect = containerRef.getBoundingClientRect();
+    const frac = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    const minV = getVal(MIN_F, dataKey);
+    const maxV = getVal(MAX_F, dataKey);
+    const val = frac * (maxV - minV) + minV;
+    // Convert back to Hz
+    let hz: number;
+    if (dataKey === 'hz') hz = val;
+    else if (dataKey === 'log') hz = Math.pow(2, val);
+    else if (dataKey === 'bark') hz = val * 100; // approximate
+    else hz = 700 * (Math.pow(10, val / 2595) - 1); // mel to hz
+
+    let closest: Harmonic | null = null;
+    let minCents = Infinity;
+    activeHarmonics.forEach(h => {
+      const cents = Math.abs(1200 * Math.log2(h.freq / hz));
+      if (cents < minCents) { minCents = cents; closest = h; }
+    });
+    if (minCents < 200 && closest) {
+      setHoveredHarm(closest);
+      setHoverPct(getPct(closest.freq, dataKey));
+      setActiveSpectrum(dataKey);
+    } else {
+      setHoveredHarm(null);
+      setActiveSpectrum(null);
+    }
+  }, [activeHarmonics]);
 
   const handleKbMove = useCallback((e: React.MouseEvent) => {
     if (!keyboardRef.current) return;
@@ -97,8 +137,14 @@ export default function Index() {
       const cents = Math.abs(1200 * Math.log2(h.freq / f));
       if (cents < minCents) { minCents = cents; closest = h; }
     });
-    if (minCents < 150 && closest) { setHoveredHarm(closest); setHoverPct(getPct(closest.freq, 'log')); }
-    else { setHoveredHarm(null); }
+    if (minCents < 150 && closest) {
+      setHoveredHarm(closest);
+      setHoverPct(getPct(closest.freq, 'log'));
+      setActiveSpectrum('log');
+    } else {
+      setHoveredHarm(null);
+      setActiveSpectrum(null);
+    }
   }, [activeHarmonics]);
 
   const toggleHighlight = (h1: Harmonic, h2: Harmonic) => {
@@ -116,94 +162,115 @@ export default function Index() {
     return (
       <div className="rounded border border-border bg-card px-3 py-2 shadow-xl" style={{ pointerEvents: 'none', zIndex: 1000 }}>
         <div className="font-mono-display text-sm font-extrabold text-foreground">{hz.toFixed(1)} Hz</div>
-        <div className="font-mono-display text-[10px] text-muted-foreground">{bark.toFixed(2)}z | {mel.toFixed(0)}m</div>
-        <div className="mt-1 border-t border-border pt-1 font-mono-display text-[10px] text-muted-foreground">
+        <div className="font-mono-display text-xs text-muted-foreground">{bark.toFixed(2)}z | {mel.toFixed(0)}m</div>
+        <div className="mt-1 border-t border-border pt-1 font-mono-display text-xs text-muted-foreground">
           {tet.name} <span className={tet.cents > 0 ? 'text-emerald-400' : 'text-red-400'}>{tet.cents > 0 ? '+' : ''}{tet.cents.toFixed(1)}¢</span>
         </div>
       </div>
     );
   };
 
-  const PsychoChart = ({ title, desc, dataKey }: { title: string; desc: string; dataKey: string }) => (
-    <div className="mb-2">
-      <div className="mb-0.5 flex items-baseline gap-3">
-        <h3 className="font-mono-display text-[10px] font-extrabold uppercase tracking-widest text-foreground">{title}</h3>
-        <span className="text-[10px] text-muted-foreground">{desc}</span>
-      </div>
-      <div className="relative border border-border bg-card" style={{ height: 100 }}>
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={chartData} margin={{ top: 6, right: 8, left: 8, bottom: 6 }}>
-            <CartesianGrid strokeDasharray="1 4" stroke={COLOR_BORDER} vertical={false} />
-            <XAxis dataKey={dataKey} type="number" domain={[getVal(MIN_F, dataKey), getVal(MAX_F, dataKey)]} hide />
-            <YAxis hide domain={[0, 100]} />
-            <RechartsTooltip content={<ChartTooltipContent />} cursor={{ stroke: COLOR_BORDER }} isAnimationActive={false} allowEscapeViewBox={{ x: true, y: true }} wrapperStyle={{ zIndex: 1000 }} />
-            <Line type="monotone" dataKey="y" stroke="transparent" dot={false} activeDot={{ r: 3, fill: '#fff' }} />
-            {activeHarmonics.map(h => {
-              const isHighlighted = highlightedPair
-                ? (h.id === highlightedPair.id1 || h.id === highlightedPair.id2)
-                : true;
-              return (
-                <ReferenceLine
-                  key={h.id}
-                  x={getVal(h.freq, dataKey)}
-                  stroke={h.color}
-                  strokeWidth={h.isFund ? 2 : 1}
-                  strokeOpacity={isHighlighted ? (h.isFund ? 1 : 0.6) : 0.1}
-                />
-              );
-            })}
-          </LineChart>
-        </ResponsiveContainer>
-        <div className="pointer-events-none absolute inset-0 z-10">
-          <div className="relative h-full w-full" style={{ margin: '0 8px' }}>
-            {activeHarmonics.map(h => {
-              if (h.isFund) return null;
-              const p = getPct(h.freq, dataKey);
-              const isHighlighted = highlightedPair
-                ? (h.id === highlightedPair.id1 || h.id === highlightedPair.id2)
-                : true;
-              return (
-                <div key={`lbl-${h.id}`} className="font-mono-display absolute bottom-0.5 text-[7px] font-bold" style={{ left: `calc(${p}% * calc(100% - 16px) / 100%)`, transform: 'translateX(-50%)', color: h.color, opacity: isHighlighted ? 0.8 : 0.1 }}>H{h.degree}</div>
-              );
-            })}
+  const PsychoChart = ({ title, desc, dataKey }: { title: string; desc: string; dataKey: SpectrumKey }) => {
+    const chartRef = useRef<HTMLDivElement>(null);
+    return (
+      <div className="mb-1.5">
+        <div className="mb-0.5 flex items-baseline gap-3">
+          <h3 className="font-mono-display text-xs font-extrabold uppercase tracking-widest text-foreground">{title}</h3>
+          <span className="text-xs text-muted-foreground">{desc}</span>
+        </div>
+        <div
+          ref={chartRef}
+          className="relative border border-border bg-card"
+          style={{ height: 56, cursor: 'crosshair' }}
+          onMouseMove={(e) => handleChartHover(dataKey, e, chartRef.current)}
+          onMouseLeave={() => { setHoveredHarm(null); setActiveSpectrum(null); }}
+        >
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={chartData} margin={{ top: 4, right: 8, left: 8, bottom: 4 }}>
+              <CartesianGrid strokeDasharray="1 4" stroke={COLOR_BORDER} vertical={false} />
+              <XAxis dataKey={dataKey} type="number" domain={[getVal(MIN_F, dataKey), getVal(MAX_F, dataKey)]} hide />
+              <YAxis hide domain={[0, 100]} />
+              <RechartsTooltip content={<ChartTooltipContent />} cursor={{ stroke: COLOR_BORDER }} isAnimationActive={false} allowEscapeViewBox={{ x: true, y: true }} wrapperStyle={{ zIndex: 1000 }} />
+              <Line type="monotone" dataKey="y" stroke="transparent" dot={false} activeDot={{ r: 3, fill: '#fff' }} />
+              {activeHarmonics.map(h => {
+                const isHighlighted = highlightedPair
+                  ? (h.id === highlightedPair.id1 || h.id === highlightedPair.id2)
+                  : true;
+                const isHovered = hoveredHarm?.id === h.id;
+                return (
+                  <ReferenceLine
+                    key={h.id}
+                    x={getVal(h.freq, dataKey)}
+                    stroke={h.color}
+                    strokeWidth={isHovered ? 3 : h.isFund ? 2 : 1}
+                    strokeOpacity={isHighlighted ? (h.isFund ? 1 : 0.7) : 0.1}
+                  />
+                );
+              })}
+            </LineChart>
+          </ResponsiveContainer>
+          <div className="pointer-events-none absolute inset-0 z-10">
+            <div className="relative h-full w-full" style={{ margin: '0 8px' }}>
+              {activeHarmonics.map(h => {
+                if (h.isFund) return null;
+                const p = getPct(h.freq, dataKey);
+                const isHighlighted = highlightedPair
+                  ? (h.id === highlightedPair.id1 || h.id === highlightedPair.id2)
+                  : true;
+                return (
+                  <div key={`lbl-${h.id}`} className="font-mono-display absolute bottom-0 text-[9px] font-bold" style={{ left: `calc(${p}% * calc(100% - 16px) / 100%)`, transform: 'translateX(-50%)', color: h.color, opacity: isHighlighted ? 0.8 : 0.1 }}>H{h.degree}</div>
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Custom slider styles */}
       <style>{`
-        .fa-slider { -webkit-appearance: none; width: 100%; height: 2px; background: hsl(240,20%,14%); outline: none; border-radius: 2px; }
-        .fa-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; border-radius: 50%; cursor: pointer; }
+        .fa-slider { -webkit-appearance: none; width: 100%; height: 3px; background: hsl(0,0%,16%); outline: none; border-radius: 2px; }
+        .fa-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; cursor: pointer; }
         .slider-a::-webkit-slider-thumb { background: ${COLOR_NOTE_A}; box-shadow: 0 0 8px ${COLOR_NOTE_A}; }
         .slider-b::-webkit-slider-thumb { background: ${COLOR_NOTE_B}; box-shadow: 0 0 8px ${COLOR_NOTE_B}; }
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .interference-pill { transition: all 0.15s ease; cursor: pointer; }
         .interference-pill:hover { filter: brightness(1.3); transform: translateY(-1px); }
-        .interference-pill.active { outline: 2px solid hsl(185,100%,50%); outline-offset: 1px; }
+        .interference-pill.active { outline: 2px solid hsl(33,90%,55%); outline-offset: 1px; }
       `}</style>
 
       {/* Sticky Header */}
       <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur-md">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-1.5">
+        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-2">
           <div className="flex items-center gap-3">
-            <Activity size={14} className="text-primary" />
-            <span className="font-mono-display text-xs font-bold tracking-wider text-foreground">FREQUENCY ANALYSER</span>
-            <div className="font-mono-display text-[11px] font-semibold">
+            <a href="https://midlifemuso.com" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2.5 hover:opacity-80 transition-opacity">
+              <img src="/images/midlife-muso-logo.webp" alt="Midlife Muso" className="h-8 w-8 rounded" />
+            </a>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-mono-display text-sm font-bold tracking-wider text-foreground">FREQUENCY ANALYSER</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span>A <a href="https://midlifemuso.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Midlife Muso</a> Tool</span>
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="font-mono-display text-sm font-semibold">
               <span className="text-note-a">{getNoteName(midiA)} ({freqA.toFixed(1)}Hz)</span>
               <span className="mx-2 text-muted-foreground">→</span>
               <span className="text-note-b">{getNoteName(midiB)} ({freqB.toFixed(1)}Hz)</span>
             </div>
-          </div>
-          <div className="hidden items-center gap-4 font-mono-display text-[10px] font-semibold uppercase sm:flex">
-            <span className="text-muted-foreground">Δ</span>
-            <span>Hz: <span className="text-gold">{Math.abs(freqA - freqB).toFixed(1)}</span></span>
-            <span>Semi: <span className="text-gold">{stDiff}</span></span>
-            <span>Bark: <span className="text-gold">{Math.abs(toBark(freqA) - toBark(freqB)).toFixed(2)}z</span></span>
-            <span>Mel: <span className="text-gold">{Math.abs(toMel(freqA) - toMel(freqB)).toFixed(0)}m</span></span>
+            <div className="hidden items-center gap-3 font-mono-display text-xs font-semibold uppercase lg:flex">
+              <span className="text-muted-foreground">Δ</span>
+              <span>Hz: <span className="text-gold">{Math.abs(freqA - freqB).toFixed(1)}</span></span>
+              <span>Semi: <span className="text-gold">{stDiff}</span></span>
+              <span>Bark: <span className="text-gold">{Math.abs(toBark(freqA) - toBark(freqB)).toFixed(2)}z</span></span>
+              <span>Mel: <span className="text-gold">{Math.abs(toMel(freqA) - toMel(freqB)).toFixed(0)}m</span></span>
+            </div>
           </div>
         </div>
       </header>
@@ -212,22 +279,22 @@ export default function Index() {
         {/* Controls Row */}
         <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-[1fr_1.5fr]">
           {/* Tuning */}
-          <div className="rounded border border-border bg-card p-2.5">
-            <div className="mb-2 flex items-center gap-2">
+          <div className="rounded border border-border bg-card p-3">
+            <div className="mb-2 flex items-center gap-3">
               <div className="flex-1">
-                <label className="font-mono-display text-[8px] font-bold uppercase tracking-wider text-note-a">Note A</label>
+                <label className="font-mono-display text-[10px] font-bold uppercase tracking-wider text-note-a">Note A</label>
                 <input type="range" min="21" max="108" value={midiA} onChange={(e) => { const v = parseInt(e.target.value); if (v + stDiff <= 108) setMidiA(v); else setMidiA(108 - stDiff); }} className="fa-slider slider-a" />
               </div>
               <div className="flex-1">
-                <label className="font-mono-display text-[8px] font-bold uppercase tracking-wider text-note-b">Note B</label>
+                <label className="font-mono-display text-[10px] font-bold uppercase tracking-wider text-note-b">Note B</label>
                 <input type="range" min="21" max="108" value={midiB} onChange={(e) => setStDiff(Math.max(0, parseInt(e.target.value) - midiA))} className="fa-slider slider-b" />
               </div>
               <button
                 onClick={() => setShowOvertones(!showOvertones)}
                 title={showOvertones ? "Hide Overtones" : "Show Overtones"}
-                className={`flex h-7 w-7 items-center justify-center rounded border border-border transition-colors ${showOvertones ? 'bg-primary text-primary-foreground' : 'bg-transparent text-foreground'}`}
+                className={`flex h-8 w-8 items-center justify-center rounded border border-border transition-colors ${showOvertones ? 'bg-primary text-primary-foreground' : 'bg-transparent text-foreground'}`}
               >
-                <Layers size={13} />
+                <Layers size={15} />
               </button>
             </div>
             <div className="flex flex-wrap gap-1">
@@ -235,7 +302,7 @@ export default function Index() {
                 <button
                   key={iv.name}
                   onClick={() => setStDiff(iv.semi)}
-                  className={`font-mono-display min-w-[24px] flex-1 rounded-sm border border-border px-1 py-0.5 text-[9px] font-semibold transition-colors ${stDiff === iv.semi ? 'bg-foreground text-background' : 'bg-background text-muted-foreground hover:bg-muted'}`}
+                  className={`font-mono-display min-w-[28px] flex-1 rounded-sm border border-border px-1.5 py-1 text-[11px] font-semibold transition-colors ${stDiff === iv.semi ? 'bg-foreground text-background' : 'bg-background text-muted-foreground hover:bg-muted'}`}
                 >
                   {iv.name}
                 </button>
@@ -244,21 +311,21 @@ export default function Index() {
           </div>
 
           {/* Interference Engine */}
-          <div className="rounded border border-border bg-card p-2.5">
+          <div className="rounded border border-border bg-card p-3">
             <div className="mb-1.5 flex items-center justify-between">
-              <div className="flex items-center gap-1.5">
-                <AlertTriangle size={11} className="text-gold" />
-                <span className="font-mono-display text-[9px] font-extrabold uppercase tracking-wider text-muted-foreground">Interference Engine</span>
+              <div className="flex items-center gap-2">
+                <AlertTriangle size={13} className="text-gold" />
+                <span className="font-mono-display text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground">Interference Engine</span>
               </div>
               {highlightedPair && (
-                <button onClick={() => setHighlightedPair(null)} className="flex items-center gap-1 text-[9px] text-muted-foreground hover:text-foreground">
-                  <X size={10} /> Clear
+                <button onClick={() => setHighlightedPair(null)} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+                  <X size={12} /> Clear
                 </button>
               )}
             </div>
-            <div className="scrollbar-hide flex max-h-14 flex-wrap gap-1.5 overflow-y-auto">
+            <div className="scrollbar-hide flex max-h-16 flex-wrap gap-1.5 overflow-y-auto">
               {interferences.length === 0 ? (
-                <div className="text-[10px] italic text-muted-foreground opacity-50">Timbres perfectly resolved.</div>
+                <div className="text-xs italic text-muted-foreground opacity-50">Timbres perfectly resolved.</div>
               ) : (
                 interferences.map((c, i) => {
                   const isActive = highlightedPair && highlightedPair.id1 === c.h1.id && highlightedPair.id2 === c.h2.id;
@@ -266,7 +333,7 @@ export default function Index() {
                     <div
                       key={i}
                       onClick={() => toggleHighlight(c.h1, c.h2)}
-                      className={`interference-pill flex items-center gap-1.5 rounded-full border border-border bg-background px-2 py-0.5 font-mono-display text-[9px] ${isActive ? 'active' : ''}`}
+                      className={`interference-pill flex items-center gap-1.5 rounded-full border border-border bg-background px-2.5 py-1 font-mono-display text-[11px] ${isActive ? 'active' : ''}`}
                     >
                       <span className="font-extrabold" style={{ color: c.h1.color }}>{c.h1.note}{c.h1.degree}</span>
                       <span className="text-muted-foreground">+</span>
@@ -280,12 +347,24 @@ export default function Index() {
           </div>
         </div>
 
-        {/* Fun Fact Bar */}
-        <div className="mt-2 flex items-start gap-2 rounded border border-gold/30 bg-gold/5 px-3 py-1.5">
-          <Lightbulb size={13} className="mt-0.5 shrink-0 text-gold" />
+        {/* Fun Fact Bar — shows harmonic fact if hovering, otherwise interval fact */}
+        <div className="mt-2 flex items-start gap-2.5 rounded border border-primary/30 bg-primary/5 px-3 py-2">
+          <Lightbulb size={15} className="mt-0.5 shrink-0 text-primary" />
           <div className="min-w-0">
-            <span className="font-mono-display text-[9px] font-bold uppercase tracking-wider text-gold">{currentIntervalName}</span>
-            <p className="mt-0.5 text-[11px] leading-snug text-foreground/80">{currentFact}</p>
+            {hoveredHarm && harmonicFacts.length > 0 ? (
+              <>
+                <span className="font-mono-display text-[11px] font-bold uppercase tracking-wider text-primary">
+                  {hoveredHarm.note === 'A' ? getNoteName(midiA) : getNoteName(midiB)} — H{hoveredHarm.degree} ({hoveredHarm.freq.toFixed(1)} Hz)
+                  {activeSpectrum && <span className="ml-2 text-muted-foreground">on {activeSpectrum.toUpperCase()} scale</span>}
+                </span>
+                <p className="mt-0.5 text-sm leading-snug text-foreground/80">{harmonicFacts[harmonicFactIdx % harmonicFacts.length]?.text}</p>
+              </>
+            ) : (
+              <>
+                <span className="font-mono-display text-[11px] font-bold uppercase tracking-wider text-primary">{currentIntervalName}</span>
+                <p className="mt-0.5 text-sm leading-snug text-foreground/80">{currentFact}</p>
+              </>
+            )}
           </div>
         </div>
 
@@ -295,7 +374,7 @@ export default function Index() {
           <PsychoChart title="II. Theoretical (Log)" desc="Music theory view — intervals are spatially fixed." dataKey="log" />
 
           {/* Keyboard */}
-          <div className="relative mb-2 rounded border border-border bg-card p-2">
+          <div className="relative mb-1.5 rounded border border-border bg-card p-2">
             <div className="relative mb-0.5 h-3">
               {activeHarmonics.map((h, i) => {
                 const isHighlighted = highlightedPair
@@ -320,34 +399,52 @@ export default function Index() {
             <div
               ref={keyboardRef}
               onMouseMove={handleKbMove}
-              onMouseLeave={() => setHoveredHarm(null)}
+              onMouseLeave={() => { setHoveredHarm(null); setActiveSpectrum(null); }}
               className="relative flex overflow-hidden border border-border"
-              style={{ height: 32, cursor: 'crosshair' }}
+              style={{ height: 28, cursor: 'crosshair' }}
             >
               {Array.from({ length: 72 }).map((_, i) => {
                 const m = 36 + i;
                 const isBlack = [1, 3, 6, 8, 10].includes(m % 12);
                 return (
-                  <div key={m} className="relative flex flex-1 items-end justify-center" style={{ background: 'hsl(240, 5%, 90%)', borderRight: '1px solid hsl(240, 5%, 75%)' }}>
-                    {isBlack && <div className="absolute left-0 right-0 top-0 z-[2]" style={{ height: '60%', background: 'hsl(240, 20%, 10%)' }} />}
+                  <div key={m} className="relative flex flex-1 items-end justify-center" style={{ background: 'hsl(0, 0%, 88%)', borderRight: '1px solid hsl(0, 0%, 72%)' }}>
+                    {isBlack && <div className="absolute left-0 right-0 top-0 z-[2]" style={{ height: '60%', background: 'hsl(0, 0%, 10%)' }} />}
                   </div>
                 );
               })}
             </div>
             {hoveredHarm && hoverPct !== null && (
               <div
-                className="pointer-events-none absolute z-50 rounded border bg-card px-2.5 py-1.5 shadow-xl"
+                className="pointer-events-none absolute z-50 rounded border bg-card px-3 py-2 shadow-xl"
                 style={{ bottom: '100%', left: `${hoverPct}%`, transform: 'translateX(-50%)', borderColor: hoveredHarm.color, marginBottom: 6, whiteSpace: 'nowrap' }}
               >
-                <div className="font-mono-display text-[9px] font-extrabold" style={{ color: hoveredHarm.color }}>{hoveredHarm.note} H{hoveredHarm.degree}</div>
-                <div className="font-mono-display text-xs font-bold text-foreground">{hoveredHarm.freq.toFixed(1)} Hz</div>
-                <div className="font-mono-display text-[9px] text-muted-foreground">{getClosest12TET(hoveredHarm.freq).name} <span className="text-foreground">{getClosest12TET(hoveredHarm.freq).cents.toFixed(1)}¢</span></div>
+                <div className="font-mono-display text-[11px] font-extrabold" style={{ color: hoveredHarm.color }}>{hoveredHarm.note} H{hoveredHarm.degree}</div>
+                <div className="font-mono-display text-sm font-bold text-foreground">{hoveredHarm.freq.toFixed(1)} Hz</div>
+                <div className="font-mono-display text-xs text-muted-foreground">{getClosest12TET(hoveredHarm.freq).name} <span className="text-foreground">{getClosest12TET(hoveredHarm.freq).cents.toFixed(1)}¢</span></div>
               </div>
             )}
           </div>
 
           <PsychoChart title="III. Biological (Bark)" desc="Ear resolution — clashes occur when Δ < 1.0z." dataKey="bark" />
           <PsychoChart title="IV. Psychological (Mel)" desc="Perceived pitch distance — bass feels 'wide'." dataKey="mel" />
+        </div>
+
+        {/* Footer */}
+        <div className="mt-3 flex items-center justify-center gap-4 border-t border-border pt-3">
+          <a href="https://midlifemuso.com" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors">
+            <img src="/images/midlife-muso-logo.webp" alt="Midlife Muso" className="h-5 w-5 rounded" />
+            midlifemuso.com
+            <ExternalLink size={10} />
+          </a>
+          <a href="https://midlifemuso.com/learning" target="_blank" rel="noopener noreferrer" className="text-xs text-muted-foreground hover:text-primary transition-colors">
+            Learning
+          </a>
+          <a href="https://midlifemuso.com/apps" target="_blank" rel="noopener noreferrer" className="text-xs text-muted-foreground hover:text-primary transition-colors">
+            Apps
+          </a>
+          <a href="https://midlifemuso.com/about-me" target="_blank" rel="noopener noreferrer" className="text-xs text-muted-foreground hover:text-primary transition-colors">
+            About
+          </a>
         </div>
       </div>
     </div>
