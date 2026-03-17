@@ -1,16 +1,355 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react';
+import { LineChart, XAxis, YAxis, CartesianGrid, ResponsiveContainer, ReferenceLine, Tooltip as RechartsTooltip, Line } from 'recharts';
+import { Activity, Layers, AlertTriangle, X, Lightbulb } from 'lucide-react';
+import {
+  MIN_F, MAX_F, HARMONIC_COUNT, INTERVALS, INTERVAL_FACTS,
+  midiToFreq, toBark, toMel, getNoteName, getClosest12TET, getVal, getPct,
+  type Harmonic, type Interference,
+} from '@/lib/frequency-utils';
 
-// IMPORTANT: Fully REPLACE this with your own code
-const PlaceholderIndex = () => {
-  // PLACEHOLDER: Replace this entire return statement with the user's app.
-  // The inline background color is intentionally not part of the design system.
-  return (
-    <div className="flex min-h-screen items-center justify-center" style={{ backgroundColor: '#fcfbf8' }}>
-      <img data-lovable-blank-page-placeholder="REMOVE_THIS" src="/placeholder.svg" alt="Your app will live here!" />
+// HSL values matching CSS vars for inline chart usage
+const COLOR_NOTE_A = 'hsl(185, 100%, 50%)';
+const COLOR_NOTE_B = 'hsl(266, 100%, 50%)';
+const COLOR_BORDER = 'hsl(240, 20%, 14%)';
+const COLOR_PANEL = 'hsl(240, 33%, 3%)';
+const COLOR_BG = 'hsl(240, 33%, 2%)';
+const COLOR_TEXT_MUTED = 'hsl(240, 5%, 65%)';
+const COLOR_GOLD = 'hsl(51, 100%, 50%)';
+
+export default function Index() {
+  const [midiA, setMidiA] = useState(69);
+  const [stDiff, setStDiff] = useState(7);
+  const [showOvertones, setShowOvertones] = useState(true);
+  const [highlightedPair, setHighlightedPair] = useState<{ id1: string; id2: string } | null>(null);
+  const [factIndex, setFactIndex] = useState(0);
+
+  const keyboardRef = useRef<HTMLDivElement>(null);
+  const [hoveredHarm, setHoveredHarm] = useState<Harmonic | null>(null);
+  const [hoverPct, setHoverPct] = useState<number | null>(null);
+
+  const midiB = useMemo(() => Math.min(108, midiA + stDiff), [midiA, stDiff]);
+  const freqA = useMemo(() => midiToFreq(midiA), [midiA]);
+  const freqB = useMemo(() => midiToFreq(midiB), [midiB]);
+
+  const harmonicsA = useMemo<Harmonic[]>(() => Array.from({ length: HARMONIC_COUNT }, (_, i) => ({
+    id: `A${i + 1}`, note: 'A', degree: i + 1, freq: freqA * (i + 1), color: COLOR_NOTE_A, isFund: i === 0
+  })), [freqA]);
+
+  const harmonicsB = useMemo<Harmonic[]>(() => Array.from({ length: HARMONIC_COUNT }, (_, i) => ({
+    id: `B${i + 1}`, note: 'B', degree: i + 1, freq: freqB * (i + 1), color: COLOR_NOTE_B, isFund: i === 0
+  })), [freqB]);
+
+  const activeHarmonics = useMemo(() => {
+    if (!showOvertones) return stDiff === 0 ? [harmonicsA[0]] : [harmonicsA[0], harmonicsB[0]];
+    return stDiff === 0 ? harmonicsA : [...harmonicsA, ...harmonicsB];
+  }, [showOvertones, stDiff, harmonicsA, harmonicsB]);
+
+  const chartData = useMemo(() => {
+    const pts = [];
+    for (let i = 0; i <= 120; i++) {
+      const f = MIN_F * Math.pow(MAX_F / MIN_F, i / 120);
+      pts.push({ hz: f, log: Math.log2(f), bark: toBark(f), mel: toMel(f), y: 50 });
+    }
+    return pts;
+  }, []);
+
+  const interferences = useMemo<Interference[]>(() => {
+    const clashes: Interference[] = [];
+    for (let i = 0; i < activeHarmonics.length; i++) {
+      for (let j = i + 1; j < activeHarmonics.length; j++) {
+        const h1 = activeHarmonics[i];
+        const h2 = activeHarmonics[j];
+        const hzDiff = Math.abs(h1.freq - h2.freq);
+        if (hzDiff < 3) continue;
+        const dist = Math.abs(toBark(h1.freq) - toBark(h2.freq));
+        if (dist < 1.0) clashes.push({ h1, h2, barkDist: dist });
+      }
+    }
+    return clashes.sort((a, b) => a.barkDist - b.barkDist);
+  }, [activeHarmonics]);
+
+  // Rotate fun facts
+  useEffect(() => {
+    setFactIndex(0);
+  }, [stDiff]);
+
+  useEffect(() => {
+    const facts = INTERVAL_FACTS[stDiff] || INTERVAL_FACTS[0];
+    if (facts.length <= 1) return;
+    const timer = setInterval(() => {
+      setFactIndex(prev => (prev + 1) % facts.length);
+    }, 8000);
+    return () => clearInterval(timer);
+  }, [stDiff]);
+
+  const currentFact = (INTERVAL_FACTS[stDiff] || INTERVAL_FACTS[0])[factIndex] || '';
+  const currentIntervalName = INTERVALS.find(iv => iv.semi === stDiff)?.full || 'Interval';
+
+  const handleKbMove = useCallback((e: React.MouseEvent) => {
+    if (!keyboardRef.current) return;
+    const rect = keyboardRef.current.getBoundingClientRect();
+    const frac = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    const logF = frac * (Math.log2(MAX_F) - Math.log2(MIN_F)) + Math.log2(MIN_F);
+    const f = Math.pow(2, logF);
+    let closest: Harmonic | null = null;
+    let minCents = Infinity;
+    activeHarmonics.forEach(h => {
+      const cents = Math.abs(1200 * Math.log2(h.freq / f));
+      if (cents < minCents) { minCents = cents; closest = h; }
+    });
+    if (minCents < 150 && closest) { setHoveredHarm(closest); setHoverPct(getPct(closest.freq, 'log')); }
+    else { setHoveredHarm(null); }
+  }, [activeHarmonics]);
+
+  const toggleHighlight = (h1: Harmonic, h2: Harmonic) => {
+    if (highlightedPair && highlightedPair.id1 === h1.id && highlightedPair.id2 === h2.id) {
+      setHighlightedPair(null);
+    } else {
+      setHighlightedPair({ id1: h1.id, id2: h2.id });
+    }
+  };
+
+  const ChartTooltipContent = ({ active, payload }: any) => {
+    if (!active || !payload?.length) return null;
+    const { hz, bark, mel } = payload[0].payload;
+    const tet = getClosest12TET(hz);
+    return (
+      <div className="rounded border border-border bg-card px-3 py-2 shadow-xl" style={{ pointerEvents: 'none', zIndex: 1000 }}>
+        <div className="font-mono-display text-sm font-extrabold text-foreground">{hz.toFixed(1)} Hz</div>
+        <div className="font-mono-display text-[10px] text-muted-foreground">{bark.toFixed(2)}z | {mel.toFixed(0)}m</div>
+        <div className="mt-1 border-t border-border pt-1 font-mono-display text-[10px] text-muted-foreground">
+          {tet.name} <span className={tet.cents > 0 ? 'text-emerald-400' : 'text-red-400'}>{tet.cents > 0 ? '+' : ''}{tet.cents.toFixed(1)}¢</span>
+        </div>
+      </div>
+    );
+  };
+
+  const PsychoChart = ({ title, desc, dataKey }: { title: string; desc: string; dataKey: string }) => (
+    <div className="mb-2">
+      <div className="mb-0.5 flex items-baseline gap-3">
+        <h3 className="font-mono-display text-[10px] font-extrabold uppercase tracking-widest text-foreground">{title}</h3>
+        <span className="text-[10px] text-muted-foreground">{desc}</span>
+      </div>
+      <div className="relative border border-border bg-card" style={{ height: 100 }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={chartData} margin={{ top: 6, right: 8, left: 8, bottom: 6 }}>
+            <CartesianGrid strokeDasharray="1 4" stroke={COLOR_BORDER} vertical={false} />
+            <XAxis dataKey={dataKey} type="number" domain={[getVal(MIN_F, dataKey), getVal(MAX_F, dataKey)]} hide />
+            <YAxis hide domain={[0, 100]} />
+            <RechartsTooltip content={<ChartTooltipContent />} cursor={{ stroke: COLOR_BORDER }} isAnimationActive={false} allowEscapeViewBox={{ x: true, y: true }} wrapperStyle={{ zIndex: 1000 }} />
+            <Line type="monotone" dataKey="y" stroke="transparent" dot={false} activeDot={{ r: 3, fill: '#fff' }} />
+            {activeHarmonics.map(h => {
+              const isHighlighted = highlightedPair
+                ? (h.id === highlightedPair.id1 || h.id === highlightedPair.id2)
+                : true;
+              return (
+                <ReferenceLine
+                  key={h.id}
+                  x={getVal(h.freq, dataKey)}
+                  stroke={h.color}
+                  strokeWidth={h.isFund ? 2 : 1}
+                  strokeOpacity={isHighlighted ? (h.isFund ? 1 : 0.6) : 0.1}
+                />
+              );
+            })}
+          </LineChart>
+        </ResponsiveContainer>
+        <div className="pointer-events-none absolute inset-0 z-10">
+          <div className="relative h-full w-full" style={{ margin: '0 8px' }}>
+            {activeHarmonics.map(h => {
+              if (h.isFund) return null;
+              const p = getPct(h.freq, dataKey);
+              const isHighlighted = highlightedPair
+                ? (h.id === highlightedPair.id1 || h.id === highlightedPair.id2)
+                : true;
+              return (
+                <div key={`lbl-${h.id}`} className="font-mono-display absolute bottom-0.5 text-[7px] font-bold" style={{ left: `calc(${p}% * calc(100% - 16px) / 100%)`, transform: 'translateX(-50%)', color: h.color, opacity: isHighlighted ? 0.8 : 0.1 }}>H{h.degree}</div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
     </div>
   );
-};
 
-const Index = PlaceholderIndex;
+  return (
+    <div className="min-h-screen bg-background text-foreground">
+      {/* Custom slider styles */}
+      <style>{`
+        .fa-slider { -webkit-appearance: none; width: 100%; height: 2px; background: hsl(240,20%,14%); outline: none; border-radius: 2px; }
+        .fa-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; border-radius: 50%; cursor: pointer; }
+        .slider-a::-webkit-slider-thumb { background: ${COLOR_NOTE_A}; box-shadow: 0 0 8px ${COLOR_NOTE_A}; }
+        .slider-b::-webkit-slider-thumb { background: ${COLOR_NOTE_B}; box-shadow: 0 0 8px ${COLOR_NOTE_B}; }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .interference-pill { transition: all 0.15s ease; cursor: pointer; }
+        .interference-pill:hover { filter: brightness(1.3); transform: translateY(-1px); }
+        .interference-pill.active { outline: 2px solid hsl(185,100%,50%); outline-offset: 1px; }
+      `}</style>
 
-export default Index;
+      {/* Sticky Header */}
+      <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur-md">
+        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-1.5">
+          <div className="flex items-center gap-3">
+            <Activity size={14} className="text-primary" />
+            <span className="font-mono-display text-xs font-bold tracking-wider text-foreground">FREQUENCY ANALYSER</span>
+            <div className="font-mono-display text-[11px] font-semibold">
+              <span className="text-note-a">{getNoteName(midiA)} ({freqA.toFixed(1)}Hz)</span>
+              <span className="mx-2 text-muted-foreground">→</span>
+              <span className="text-note-b">{getNoteName(midiB)} ({freqB.toFixed(1)}Hz)</span>
+            </div>
+          </div>
+          <div className="hidden items-center gap-4 font-mono-display text-[10px] font-semibold uppercase sm:flex">
+            <span className="text-muted-foreground">Δ</span>
+            <span>Hz: <span className="text-gold">{Math.abs(freqA - freqB).toFixed(1)}</span></span>
+            <span>Semi: <span className="text-gold">{stDiff}</span></span>
+            <span>Bark: <span className="text-gold">{Math.abs(toBark(freqA) - toBark(freqB)).toFixed(2)}z</span></span>
+            <span>Mel: <span className="text-gold">{Math.abs(toMel(freqA) - toMel(freqB)).toFixed(0)}m</span></span>
+          </div>
+        </div>
+      </header>
+
+      <div className="mx-auto max-w-5xl px-4 pb-4">
+        {/* Controls Row */}
+        <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-[1fr_1.5fr]">
+          {/* Tuning */}
+          <div className="rounded border border-border bg-card p-2.5">
+            <div className="mb-2 flex items-center gap-2">
+              <div className="flex-1">
+                <label className="font-mono-display text-[8px] font-bold uppercase tracking-wider text-note-a">Note A</label>
+                <input type="range" min="21" max="108" value={midiA} onChange={(e) => { const v = parseInt(e.target.value); if (v + stDiff <= 108) setMidiA(v); else setMidiA(108 - stDiff); }} className="fa-slider slider-a" />
+              </div>
+              <div className="flex-1">
+                <label className="font-mono-display text-[8px] font-bold uppercase tracking-wider text-note-b">Note B</label>
+                <input type="range" min="21" max="108" value={midiB} onChange={(e) => setStDiff(Math.max(0, parseInt(e.target.value) - midiA))} className="fa-slider slider-b" />
+              </div>
+              <button
+                onClick={() => setShowOvertones(!showOvertones)}
+                title={showOvertones ? "Hide Overtones" : "Show Overtones"}
+                className={`flex h-7 w-7 items-center justify-center rounded border border-border transition-colors ${showOvertones ? 'bg-primary text-primary-foreground' : 'bg-transparent text-foreground'}`}
+              >
+                <Layers size={13} />
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-1">
+              {INTERVALS.map(iv => (
+                <button
+                  key={iv.name}
+                  onClick={() => setStDiff(iv.semi)}
+                  className={`font-mono-display min-w-[24px] flex-1 rounded-sm border border-border px-1 py-0.5 text-[9px] font-semibold transition-colors ${stDiff === iv.semi ? 'bg-foreground text-background' : 'bg-background text-muted-foreground hover:bg-muted'}`}
+                >
+                  {iv.name}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Interference Engine */}
+          <div className="rounded border border-border bg-card p-2.5">
+            <div className="mb-1.5 flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <AlertTriangle size={11} className="text-gold" />
+                <span className="font-mono-display text-[9px] font-extrabold uppercase tracking-wider text-muted-foreground">Interference Engine</span>
+              </div>
+              {highlightedPair && (
+                <button onClick={() => setHighlightedPair(null)} className="flex items-center gap-1 text-[9px] text-muted-foreground hover:text-foreground">
+                  <X size={10} /> Clear
+                </button>
+              )}
+            </div>
+            <div className="scrollbar-hide flex max-h-14 flex-wrap gap-1.5 overflow-y-auto">
+              {interferences.length === 0 ? (
+                <div className="text-[10px] italic text-muted-foreground opacity-50">Timbres perfectly resolved.</div>
+              ) : (
+                interferences.map((c, i) => {
+                  const isActive = highlightedPair && highlightedPair.id1 === c.h1.id && highlightedPair.id2 === c.h2.id;
+                  return (
+                    <div
+                      key={i}
+                      onClick={() => toggleHighlight(c.h1, c.h2)}
+                      className={`interference-pill flex items-center gap-1.5 rounded-full border border-border bg-background px-2 py-0.5 font-mono-display text-[9px] ${isActive ? 'active' : ''}`}
+                    >
+                      <span className="font-extrabold" style={{ color: c.h1.color }}>{c.h1.note}{c.h1.degree}</span>
+                      <span className="text-muted-foreground">+</span>
+                      <span className="font-extrabold" style={{ color: c.h2.color }}>{c.h2.note}{c.h2.degree}</span>
+                      <span className={c.barkDist < 0.3 ? 'text-red-400' : 'text-gold'}>Δ{c.barkDist.toFixed(2)}z</span>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Fun Fact Bar */}
+        <div className="mt-2 flex items-start gap-2 rounded border border-gold/30 bg-gold/5 px-3 py-1.5">
+          <Lightbulb size={13} className="mt-0.5 shrink-0 text-gold" />
+          <div className="min-w-0">
+            <span className="font-mono-display text-[9px] font-bold uppercase tracking-wider text-gold">{currentIntervalName}</span>
+            <p className="mt-0.5 text-[11px] leading-snug text-foreground/80">{currentFact}</p>
+          </div>
+        </div>
+
+        {/* Spectrum Charts */}
+        <div className="mt-2">
+          <PsychoChart title="I. Physical (Hz)" desc="Absolute air vibration — spacing expands exponentially." dataKey="hz" />
+          <PsychoChart title="II. Theoretical (Log)" desc="Music theory view — intervals are spatially fixed." dataKey="log" />
+
+          {/* Keyboard */}
+          <div className="relative mb-2 rounded border border-border bg-card p-2">
+            <div className="relative mb-0.5 h-3">
+              {activeHarmonics.map((h, i) => {
+                const isHighlighted = highlightedPair
+                  ? (h.id === highlightedPair.id1 || h.id === highlightedPair.id2)
+                  : true;
+                return (
+                  <div
+                    key={`mk-${h.id}-${i}`}
+                    className="absolute bottom-0"
+                    style={{
+                      left: `${getPct(h.freq, 'log')}%`,
+                      width: h.isFund ? 3 : 2,
+                      height: h.isFund ? 12 : 6,
+                      background: h.color,
+                      transform: 'translateX(-50%)',
+                      opacity: isHighlighted ? 1 : 0.1
+                    }}
+                  />
+                );
+              })}
+            </div>
+            <div
+              ref={keyboardRef}
+              onMouseMove={handleKbMove}
+              onMouseLeave={() => setHoveredHarm(null)}
+              className="relative flex overflow-hidden border border-border"
+              style={{ height: 32, cursor: 'crosshair' }}
+            >
+              {Array.from({ length: 72 }).map((_, i) => {
+                const m = 36 + i;
+                const isBlack = [1, 3, 6, 8, 10].includes(m % 12);
+                return (
+                  <div key={m} className="relative flex flex-1 items-end justify-center" style={{ background: 'hsl(240, 5%, 90%)', borderRight: '1px solid hsl(240, 5%, 75%)' }}>
+                    {isBlack && <div className="absolute left-0 right-0 top-0 z-[2]" style={{ height: '60%', background: 'hsl(240, 20%, 10%)' }} />}
+                  </div>
+                );
+              })}
+            </div>
+            {hoveredHarm && hoverPct !== null && (
+              <div
+                className="pointer-events-none absolute z-50 rounded border bg-card px-2.5 py-1.5 shadow-xl"
+                style={{ bottom: '100%', left: `${hoverPct}%`, transform: 'translateX(-50%)', borderColor: hoveredHarm.color, marginBottom: 6, whiteSpace: 'nowrap' }}
+              >
+                <div className="font-mono-display text-[9px] font-extrabold" style={{ color: hoveredHarm.color }}>{hoveredHarm.note} H{hoveredHarm.degree}</div>
+                <div className="font-mono-display text-xs font-bold text-foreground">{hoveredHarm.freq.toFixed(1)} Hz</div>
+                <div className="font-mono-display text-[9px] text-muted-foreground">{getClosest12TET(hoveredHarm.freq).name} <span className="text-foreground">{getClosest12TET(hoveredHarm.freq).cents.toFixed(1)}¢</span></div>
+              </div>
+            )}
+          </div>
+
+          <PsychoChart title="III. Biological (Bark)" desc="Ear resolution — clashes occur when Δ < 1.0z." dataKey="bark" />
+          <PsychoChart title="IV. Psychological (Mel)" desc="Perceived pitch distance — bass feels 'wide'." dataKey="mel" />
+        </div>
+      </div>
+    </div>
+  );
+}
