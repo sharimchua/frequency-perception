@@ -1,5 +1,5 @@
 export const MIN_F = 20;
-export const MAX_F = 6000;
+export const MAX_F = 20000;
 export const HARMONIC_COUNT = 6;
 
 export const NOTE_NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
@@ -22,8 +22,19 @@ export const INTERVALS = [
 
 export const midiToFreq = (n: number) => 440 * Math.pow(2, (n - 69) / 12);
 export const freqToMidi = (f: number) => 12 * Math.log2(f / 440) + 69;
-export const toBark = (f: number) => 13 * Math.atan(0.00076 * f) + 3.5 * Math.atan(Math.pow(f / 7500, 2));
-export const toMel = (f: number) => 2595 * Math.log10(1 + f / 700);
+
+/**
+ * Traunmüller (1990) formula for Bark scale.
+ * More robust at high frequencies than the Zwicker approximation.
+ */
+export const toBark = (f: number) => {
+  return ((26.81 * f) / (1960 + f)) - 0.53;
+};
+
+/**
+ * Standard Mel scale formula (S.S. Stevens).
+ */
+export const toMel = (f: number) => 1127 * Math.log(1 + f / 700);
 
 export const getNoteName = (n: number) => {
   const r = Math.round(n);

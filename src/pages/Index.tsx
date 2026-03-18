@@ -3,7 +3,7 @@ import { LineChart, XAxis, YAxis, CartesianGrid, ResponsiveContainer, ReferenceL
 import { Activity, Layers, AlertTriangle, X, Lightbulb, ExternalLink } from 'lucide-react';
 import {
   MIN_F, MAX_F, HARMONIC_COUNT, INTERVALS, INTERVAL_FACTS,
-  midiToFreq, toBark, toMel, getNoteName, getClosest12TET, getVal, getPct,
+  midiToFreq, freqToMidi, toBark, toMel, getNoteName, getClosest12TET, getVal, getPct,
   getHarmonicFacts,
   type Harmonic, type Interference, type HarmonicFact,
 } from '@/lib/frequency-utils';
@@ -31,7 +31,7 @@ export default function Index() {
   const [harmonicFactIdx, setHarmonicFactIdx] = useState(0);
   const [activeSpectrum, setActiveSpectrum] = useState<SpectrumKey | null>(null);
 
-  const midiY = useMemo(() => Math.min(108, midiX + stDiff), [midiX, stDiff]);
+  const midiY = useMemo(() => midiX + stDiff, [midiX, stDiff]);
   const freqX = useMemo(() => midiToFreq(midiX), [midiX]);
   const freqY = useMemo(() => midiToFreq(midiY), [midiY]);
 
@@ -66,7 +66,8 @@ export default function Index() {
         const hzDiff = Math.abs(h1.freq - h2.freq);
         if (hzDiff < 3) continue;
         const dist = Math.abs(toBark(h1.freq) - toBark(h2.freq));
-        if (dist < 1.0) clashes.push({ h1, h2, barkDist: dist });
+        // Only show clashes (0.01 < d < 1.0) and avoid perfect resonances
+        if (dist >= 0.01 && dist < 1.0) clashes.push({ h1, h2, barkDist: dist });
       }
     }
     return clashes.sort((a, b) => a.barkDist - b.barkDist);
@@ -174,9 +175,12 @@ export default function Index() {
     const chartRef = useRef<HTMLDivElement>(null);
     return (
       <div className="mb-1.5">
-        <div className="mb-0.5 flex items-baseline gap-3">
-          <h3 className="font-mono-display text-xs font-extrabold uppercase tracking-widest text-foreground">{title}</h3>
-          <span className="text-xs text-muted-foreground">{desc}</span>
+        <div className="mb-0.5 flex items-baseline justify-between gap-3">
+          <div className="flex items-baseline gap-3">
+            <h3 className="font-mono-display text-xs font-extrabold uppercase tracking-widest text-foreground">{title}</h3>
+            <span className="text-xs text-muted-foreground">{desc}</span>
+          </div>
+          <span className="font-mono text-[9px] text-muted-foreground uppercase opacity-50">Range: 20Hz - 20kHz</span>
         </div>
         <div
           ref={chartRef}
@@ -218,7 +222,7 @@ export default function Index() {
                   ? (h.id === highlightedPair.id1 || h.id === highlightedPair.id2)
                   : true;
                 return (
-                  <div key={`lbl-${h.id}`} className="font-mono-display absolute bottom-0 text-[9px] md:text-[10px] lg:text-[11px] font-bold" style={{ left: `calc(${p}% * calc(100% - 16px) / 100%)`, transform: 'translateX(-50%)', color: h.color, opacity: isHighlighted ? 0.8 : 0.1 }}>H{h.degree}</div>
+                  <div key={`lbl-${h.id}`} className="font-mono-display absolute bottom-0 text-[9px] md:text-[10px] lg:text-[11px] font-bold" style={{ left: `${p}%`, transform: 'translateX(-50%)', color: h.color, opacity: isHighlighted ? 0.8 : (p > 100 ? 0 : 0.1), visibility: p > 100 ? 'hidden' : 'visible' }}>H{h.degree}</div>
                 );
               })}
             </div>
@@ -262,7 +266,10 @@ export default function Index() {
             <div className="font-mono-display text-xs sm:text-sm font-semibold text-right sm:text-left leading-tight sm:leading-normal">
               <span className="text-note-x block sm:inline">{getNoteName(midiX)} ({freqX.toFixed(1)}Hz)</span>
               <span className="mx-1 sm:mx-2 text-muted-foreground hidden sm:inline">→</span>
-              <span className="text-note-y block sm:inline">{getNoteName(midiY)} ({freqY.toFixed(1)}Hz)</span>
+              <span className="text-note-y block sm:inline">
+                {getNoteName(midiY)} ({freqY.toFixed(1)}Hz)
+                {midiY > 108 && <span className="ml-1.5 inline-block rounded bg-red-500/10 px-1 py-0.5 text-[9px] font-bold text-red-400 uppercase">Off-Kb</span>}
+              </span>
             </div>
             <div className="hidden items-center gap-3 font-mono-display text-xs font-semibold uppercase lg:flex">
               <span className="text-muted-foreground">Δ</span>
@@ -282,12 +289,17 @@ export default function Index() {
           <div className="rounded border border-border bg-card p-3">
             <div className="mb-2 flex items-center gap-3">
               <div className="flex-1">
-                <label className="font-mono-display text-[10px] md:text-xs font-bold uppercase tracking-wider text-note-x">Note X</label>
-                <input type="range" min="21" max="108" value={midiX} onChange={(e) => { const v = parseInt(e.target.value); if (v + stDiff <= 108) setMidiX(v); else setMidiX(108 - stDiff); }} className="fa-slider slider-x" />
+                <label className="font-mono-display text-[10px] md:text-xs font-bold uppercase tracking-wider text-note-x block mb-1">Note X</label>
+                <div className="flex items-center h-6">
+                  <input type="range" min="21" max="108" value={midiX} onChange={(e) => setMidiX(parseInt(e.target.value))} className="fa-slider slider-x" />
+                </div>
               </div>
               <div className="flex-1">
-                <label className="font-mono-display text-[10px] md:text-xs font-bold uppercase tracking-wider text-note-y">Note Y</label>
-                <input type="range" min="21" max="108" value={midiY} onChange={(e) => setStDiff(Math.max(0, parseInt(e.target.value) - midiX))} className="fa-slider slider-y" />
+                <label className="font-mono-display text-[10px] md:text-xs font-bold uppercase tracking-wider text-note-y block mb-1 sm:text-right">Note Y</label>
+                <div className="flex items-center gap-2 h-6">
+                  <input type="range" min="21" max="108" value={Math.min(108, midiY)} onChange={(e) => setStDiff(Math.max(0, parseInt(e.target.value) - midiX))} className="fa-slider slider-y flex-1" />
+                  {midiY > 108 && <span className="text-[10px] font-bold text-red-500 uppercase shrink-0 leading-none">+{midiY - 108}</span>}
+                </div>
               </div>
               <button
                 onClick={() => setShowOvertones(!showOvertones)}
@@ -395,6 +407,9 @@ export default function Index() {
                   />
                 );
               })}
+              {activeHarmonics.some(h => freqToMidi(h.freq) > 108.5) && (
+                <div className="absolute right-0 top-0 bottom-0 w-1 bg-red-500/40 pointer-events-none z-10" />
+              )}
             </div>
             <div
               ref={keyboardRef}
@@ -406,9 +421,15 @@ export default function Index() {
               {Array.from({ length: 72 }).map((_, i) => {
                 const m = 36 + i;
                 const isBlack = [1, 3, 6, 8, 10].includes(m % 12);
+                const isLast = i === 71;
                 return (
                   <div key={m} className="relative flex flex-1 items-end justify-center" style={{ background: 'hsl(0, 0%, 88%)', borderRight: '1px solid hsl(0, 0%, 72%)' }}>
                     {isBlack && <div className="absolute left-0 right-0 top-0 z-[2]" style={{ height: '60%', background: 'hsl(0, 0%, 10%)' }} />}
+                    {isLast && activeHarmonics.some(h => freqToMidi(h.freq) > 108.5) && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-red-500/10 pointer-events-none">
+                        <span className="font-mono-display text-[8px] md:text-[9px] font-black text-red-500/60 rotate-90 uppercase leading-none tracking-tighter">OFF-RANGE</span>
+                      </div>
+                    )}
                   </div>
                 );
               })}
