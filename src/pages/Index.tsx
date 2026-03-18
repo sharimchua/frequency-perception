@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { LineChart, XAxis, YAxis, CartesianGrid, ResponsiveContainer, ReferenceLine, Tooltip as RechartsTooltip, Line } from 'recharts';
-import { Activity, Layers, AlertTriangle, X, Lightbulb, ExternalLink, ChevronLeft, ChevronRight, Lock, Unlock } from 'lucide-react';
+import { Activity, Waves, AlertTriangle, X, Lightbulb, ExternalLink, ChevronLeft, ChevronRight, Lock, Unlock } from 'lucide-react';
 import {
   MIN_F, MAX_F, HARMONIC_COUNT, INTERVALS, INTERVAL_FACTS, NOTE_NAMES,
   midiToFreq, freqToMidi, toBark, toMel, getNoteName, getClosest12TET, getVal, getPct,
@@ -454,17 +454,17 @@ export default function Index() {
               <button
                 onClick={() => setShowOvertones(!showOvertones)}
                 title={showOvertones ? "Hide Overtones" : "Show Overtones"}
-                className={`flex h-8 w-8 items-center justify-center rounded border border-border transition-colors md:h-9 md:w-9 ${showOvertones ? 'bg-primary text-primary-foreground' : 'bg-transparent text-foreground'}`}
+                className={`flex h-8 w-8 items-center justify-center rounded border transition-colors md:h-9 md:w-9 ${showOvertones ? 'bg-slate-700 border-slate-600 text-white shadow-sm' : 'bg-transparent border-border text-muted-foreground'}`}
               >
-                <Layers size={15} />
+                <Waves size={15} />
               </button>
             </div>
-            <div className="flex flex-wrap gap-1 md:gap-1.5">
+            <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-12 gap-1">
               {INTERVALS.map(iv => (
                 <button
                   key={iv.name}
                   onClick={() => setStDiff(iv.semi)}
-                  className={`font-mono-display min-w-[28px] flex-1 rounded-sm border border-border px-1.5 py-1 text-[11px] md:text-xs font-semibold transition-colors ${stDiff === iv.semi ? 'bg-foreground text-background' : 'bg-background text-muted-foreground hover:bg-muted'}`}
+                  className={`font-mono-display rounded-sm border border-border px-1 py-1 text-[11px] md:text-xs font-semibold transition-colors ${stDiff === iv.semi ? 'bg-foreground text-background' : 'bg-background text-muted-foreground hover:bg-muted'}`}
                 >
                   {iv.name}
                 </button>
@@ -472,12 +472,12 @@ export default function Index() {
             </div>
           </div>
 
-          {/* Interference Engine */}
+          {/* Dissonance Detector */}
           <div className="rounded border border-border bg-card p-3">
             <div className="mb-1.5 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <AlertTriangle size={13} className="text-gold" />
-                <span className="font-mono-display text-[11px] md:text-xs font-extrabold uppercase tracking-wider text-muted-foreground">Interference Engine</span>
+                <span className="font-mono-display text-[11px] md:text-xs font-extrabold uppercase tracking-wider text-muted-foreground">Dissonance Detector</span>
               </div>
               {highlightedPair && (
                 <button onClick={() => setHighlightedPair(null)} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
