@@ -14,6 +14,8 @@ const COLOR_NOTE_Y = 'hsl(200, 60%, 45%)';
 const COLOR_BORDER = 'hsl(0, 0%, 16%)';
 const COLOR_TEXT_MUTED = 'hsl(0, 0%, 55%)';
 const COLOR_GOLD = 'hsl(45, 100%, 60%)';
+const COLOR_LOCKED = 'hsl(142, 70%, 55%)'; // Emerald-500 equivalent for strong visibility
+
 
 type SpectrumKey = 'hz' | 'log' | 'bark' | 'mel';
 
@@ -324,7 +326,7 @@ export default function Index() {
                   <ReferenceLine
                     key={h.id}
                     x={getVal(h.freq, dataKey)}
-                    stroke={h.color}
+                    stroke={isLockedMatch ? COLOR_LOCKED : h.color}
                     strokeWidth={isLockedMatch ? 4 : isHovered ? 3 : h.isFund ? 2 : 1}
                     strokeOpacity={isHighlighted ? (h.isFund ? 1 : 0.7) : 0.1}
                     className={isLockedMatch ? 'animate-heartbeat' : ''}
@@ -352,7 +354,7 @@ export default function Index() {
                       top: isNoteX ? 'auto' : '4px',
                       bottom: isNoteX ? '4px' : 'auto',
                       transform: 'translateX(-50%)', 
-                      backgroundColor: h.color, 
+                      backgroundColor: isLocked && hoveredHarm?.id === h.id ? COLOR_LOCKED : h.color, 
                       opacity: isVisible ? (isHighlighted ? 1 : 0.1) : 0, 
                       visibility: isVisible ? 'visible' : 'hidden' 
                     }}
@@ -379,16 +381,16 @@ export default function Index() {
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .interference-pill { transition: all 0.15s ease; cursor: pointer; }
         .interference-pill:hover { filter: brightness(1.3); transform: translateY(-1px); }
-        .interference-pill.active { box-shadow: inset 0 0 0 2px hsl(33,90%,55%); }
+        .interference-pill.active { border-color: ${COLOR_LOCKED}; background: hsla(142, 70%, 55%, 0.1); }
         @keyframes heartbeat {
           0% { stroke-opacity: 1; stroke-width: 3; }
           50% { stroke-opacity: 0.4; stroke-width: 5; }
           100% { stroke-opacity: 1; stroke-width: 3; }
         }
         @keyframes glow-pulse {
-          0% { opacity: 1; filter: drop-shadow(0 0 2px var(--pulse-color)); }
-          50% { opacity: 0.6; filter: drop-shadow(0 0 8px var(--pulse-color)); }
-          100% { opacity: 1; filter: drop-shadow(0 0 2px var(--pulse-color)); }
+          0% { opacity: 1; filter: drop-shadow(0 0 2px ${COLOR_LOCKED}); }
+          50% { opacity: 0.6; filter: drop-shadow(0 0 8px ${COLOR_LOCKED}); }
+          100% { opacity: 1; filter: drop-shadow(0 0 2px ${COLOR_LOCKED}); }
         }
         .animate-heartbeat { animation: heartbeat 1.5s ease-in-out infinite; }
         .animate-glow-pulse { animation: glow-pulse 1.5s ease-in-out infinite; }
@@ -508,10 +510,10 @@ export default function Index() {
         </div>
 
         {/* Fun Fact Bar — Unified layout to prevent height shifts */}
-        <div className={`mt-2 flex flex-col gap-2 rounded border px-3 py-2 transition-all duration-300 ${isLocked ? 'border-primary/50 bg-primary/[0.07] shadow-sm' : 'border-primary/30 bg-primary/5'}`}>
+        <div className={`mt-2 flex flex-col gap-2 rounded border px-3 py-2 transition-all duration-300 ${isLocked ? 'border-[#10B981]/50 bg-[#10B981]/[0.05] shadow-sm' : 'border-[#10B981]/20 bg-[#10B981]/[0.02]'}`}>
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-start gap-2.5 min-w-0 flex-1">
-              <Lightbulb size={15} className={`mt-0.5 shrink-0 ${isLocked ? 'text-primary animate-pulse' : 'text-primary'}`} />
+              <Lightbulb size={15} className={`mt-0.5 shrink-0 ${isLocked ? 'text-[#10B981] animate-pulse' : 'text-[#10B981]'}`} />
               <div className="min-w-0 flex-1">
                 {/* Unified Header & Dashboard */}
                 <div className="flex flex-col gap-1.5 mb-2">
@@ -519,18 +521,18 @@ export default function Index() {
                       {isLocked ? (
                         <button
                           onClick={() => toggleLock(null)}
-                          className="group flex items-center gap-1.5 rounded bg-primary px-2 py-0.5 border border-primary hover:bg-transparent hover:text-primary transition-all duration-200"
+                          className="group flex items-center gap-1.5 rounded bg-[#059669] px-2 py-1 border border-[#059669] hover:bg-transparent hover:text-[#059669] transition-all duration-200 shadow-md"
                           title="Click to Unlock"
                         >
-                          <span className="font-mono-display text-xs md:text-sm font-black text-primary-foreground group-hover:text-primary uppercase tracking-tight">
+                          <span className="font-mono-display text-xs md:text-sm font-black text-white group-hover:text-[#059669] uppercase tracking-tight">
                             {hoveredHarm ? `${hoveredHarm.note}H${hoveredHarm.degree}` : highlightedPair ? `${highlightedPair.id1} + ${highlightedPair.id2}` : currentIntervalName}
                           </span>
-                          <Lock size={12} className="text-primary-foreground group-hover:text-primary animate-pulse" />
-                          <span className="font-mono-display text-[9px] font-black uppercase tracking-widest ml-1 opacity-80 group-hover:opacity-100">Locked</span>
+                          <Lock size={12} className="text-white group-hover:text-[#059669] animate-pulse" />
+                          <span className="font-mono-display text-[9px] font-black uppercase tracking-widest ml-1 opacity-90 group-hover:opacity-100 italic transition-all">Locked Analysis</span>
                         </button>
                       ) : (
-                        <div className="flex items-center gap-1.5 rounded bg-primary/20 px-2 py-0.5 border border-primary/30">
-                          <span className="font-mono-display text-xs md:text-sm font-black text-primary uppercase tracking-tight">
+                        <div className="flex items-center gap-1.5 rounded bg-[#10B981]/15 px-2.5 py-1 border border-[#10B981]/30 shadow-sm">
+                          <span className="font-mono-display text-xs md:text-sm font-black text-[#059669] uppercase tracking-tight">
                             {hoveredHarm ? `${hoveredHarm.note}H${hoveredHarm.degree}` : highlightedPair ? `${highlightedPair.id1} + ${highlightedPair.id2}` : currentIntervalName}
                           </span>
                         </div>
@@ -587,13 +589,13 @@ export default function Index() {
                           <span className="font-mono text-[9px] uppercase tracking-tighter text-muted-foreground leading-none mb-1">Theoretical</span>
                           <span className="font-mono-display text-xs font-bold text-foreground">{currentIntervalName}<span className="text-[10px] ml-1 opacity-50 font-normal">+{stDiff}st</span></span>
                         </div>
-                        <div className="flex flex-col">
+                         <div className="flex flex-col">
                           <span className="font-mono text-[9px] uppercase tracking-tighter text-muted-foreground leading-none mb-1">Bark Gap</span>
-                          <span className="font-mono-display text-xs font-bold text-primary">Δ {Math.abs(toBark(freqX) - toBark(freqY)).toFixed(2)}<span className="text-[10px] ml-0.5 opacity-50 font-normal">z</span></span>
+                          <span className="font-mono-display text-xs font-bold text-[#059669]">Δ {Math.abs(toBark(freqX) - toBark(freqY)).toFixed(2)}<span className="text-[10px] ml-0.5 opacity-50 font-normal">z</span></span>
                         </div>
                         <div className="flex flex-col">
                           <span className="font-mono text-[9px] uppercase tracking-tighter text-muted-foreground leading-none mb-1">Mel Distance</span>
-                          <span className="font-mono-display text-xs font-bold text-primary">Δ {Math.abs(toMel(freqX) - toMel(freqY)).toFixed(0)}<span className="text-[10px] ml-0.5 opacity-50 font-normal">m</span></span>
+                          <span className="font-mono-display text-xs font-bold text-[#059669]">Δ {Math.abs(toMel(freqX) - toMel(freqY)).toFixed(0)}<span className="text-[10px] ml-0.5 opacity-50 font-normal">m</span></span>
                         </div>
                       </>
                     )}
@@ -610,14 +612,14 @@ export default function Index() {
             {/* Fact Controls — Always visible if multiple facts exist */}
             {activeFacts.length > 1 && (
               <div className="flex shrink-0 flex-col items-center gap-1.5 min-w-[60px]">
-                <div className="flex items-center gap-1.5 rounded bg-primary/10 p-1 border border-primary/20">
-                  <button onClick={prevFact} className="rounded p-0.5 hover:bg-primary/20 transition-colors" title="Previous Fact">
+                <div className="flex items-center gap-1.5 rounded bg-[#10B981]/10 p-1 border border-[#10B981]/20">
+                  <button onClick={prevFact} className="rounded p-0.5 hover:bg-[#10B981]/20 text-[#059669] transition-colors" title="Previous Fact">
                     <ChevronLeft size={16} />
                   </button>
-                  <span className="font-mono text-[10px] md:text-xs font-bold px-1 tabular-nums text-primary/70">
+                  <span className="font-mono text-[10px] md:text-xs font-bold px-1 tabular-nums text-[#059669]/70">
                     {(harmonicFactIdx % activeFacts.length) + 1} / {activeFacts.length}
                   </span>
-                  <button onClick={nextFact} className="rounded p-0.5 hover:bg-primary/20 transition-colors" title="Next Fact">
+                  <button onClick={nextFact} className="rounded p-0.5 hover:bg-[#10B981]/20 text-[#059669] transition-colors" title="Next Fact">
                     <ChevronRight size={16} />
                   </button>
                 </div>
@@ -688,7 +690,7 @@ export default function Index() {
                 // Colors from screenshot
                 const baseWhite = '#D7C4B1';
                 const baseBlack = '#1A1A1A';
-                const highlightColor = hMatch?.color || '#FF9F43';
+                const highlightColor = isLockedMatch ? COLOR_LOCKED : (hMatch?.color || '#FF9F43');
                 const noteName = NOTE_NAMES[m % 12];
 
                 return (
