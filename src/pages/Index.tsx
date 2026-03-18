@@ -2,7 +2,7 @@ import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react'
 import { LineChart, XAxis, YAxis, CartesianGrid, ResponsiveContainer, ReferenceLine, Tooltip as RechartsTooltip, Line } from 'recharts';
 import { Activity, Layers, AlertTriangle, X, Lightbulb, ExternalLink, ChevronLeft, ChevronRight, Lock, Unlock } from 'lucide-react';
 import {
-  MIN_F, MAX_F, HARMONIC_COUNT, INTERVALS, INTERVAL_FACTS,
+  MIN_F, MAX_F, HARMONIC_COUNT, INTERVALS, INTERVAL_FACTS, NOTE_NAMES,
   midiToFreq, freqToMidi, toBark, toMel, getNoteName, getClosest12TET, getVal, getPct,
   getHarmonicFacts, getInterferenceFacts, getContextualFacts,
   type Harmonic, type Interference, type HarmonicFact,
@@ -601,8 +601,13 @@ export default function Index() {
           <PsychoChart title="I. Physical (Hz)" desc="Absolute air vibration — spacing expands exponentially." dataKey="hz" />
           <PsychoChart title="II. Theoretical (Log)" desc="Music theory view — intervals are spatially fixed." dataKey="log" />
 
-          {/* Keyboard */}
-          <div className="relative mb-1.5 rounded border border-border bg-card p-2">
+          {/* Keyboard Analysis Dashboard */}
+          <div className="mt-4 mb-2 rounded-xl border border-border/60 bg-card/30 p-4 pt-3 shadow-inner">
+            <div className="mb-3 flex items-center justify-center">
+              <span className="font-mono-display text-[10px] md:text-xs font-black uppercase tracking-[0.4em] text-muted-foreground/50">Piano Dashboard</span>
+            </div>
+            
+            <div className="relative rounded-md border border-black/40 bg-[#D7C4B1] p-0.5 shadow-2xl transition-all duration-300">
             <div className="relative mb-0.5 h-3 md:h-4 lg:h-5">
               {activeHarmonics.map((h, i) => {
                 const isHighlighted = highlightedPair
@@ -635,20 +640,46 @@ export default function Index() {
               onMouseMove={handleKbMove}
               onMouseLeave={() => { if (!isLocked) { setHoveredHarm(null); setActiveSpectrum(null); } }}
               onClick={handleKbClick}
-              className="relative flex overflow-hidden border border-border h-8 md:h-12 lg:h-16"
+              className="relative border border-black/20 h-8 md:h-12 lg:h-16 bg-[#D7C4B1] overflow-hidden"
               style={{ cursor: isLocked ? 'default' : 'crosshair' }}
             >
-              {Array.from({ length: 72 }).map((_, i) => {
-                const m = 36 + i;
+              {Array.from({ length: 135 - 15 + 1 }).map((_, i) => {
+                const m = 15 + i;
                 const isBlack = [1, 3, 6, 8, 10].includes(m % 12);
-                const isLast = i === 71;
+                const f = midiToFreq(m);
+                const nextF = midiToFreq(m + 1);
+                const left = getPct(f, 'log');
+                const right = getPct(nextF, 'log');
+                const hMatch = activeHarmonics.find(h => Math.round(freqToMidi(h.freq)) === m);
+                const isFund = hMatch?.isFund;
+                const isHighlighted = hMatch && (!highlightedPair || hMatch.id === highlightedPair.id1 || hMatch.id === highlightedPair.id2);
+                const isLockedMatch = isLocked && hoveredHarm?.id === hMatch?.id;
+                
+                // Colors from screenshot
+                const baseWhite = '#D7C4B1';
+                const baseBlack = '#1A1A1A';
+                const highlightColor = hMatch?.color || '#FF9F43';
+                const noteName = NOTE_NAMES[m % 12];
+
                 return (
-                  <div key={m} className="relative flex flex-1 items-end justify-center" style={{ background: 'hsl(0, 0%, 88%)', borderRight: '1px solid hsl(0, 0%, 72%)' }}>
-                    {isBlack && <div className="absolute left-0 right-0 top-0 z-[2]" style={{ height: '60%', background: 'hsl(0, 0%, 10%)' }} />}
-                    {isLast && activeHarmonics.some(h => freqToMidi(h.freq) > 108.5) && (
-                      <div className="absolute inset-0 flex items-center justify-center bg-red-500/10 pointer-events-none">
-                        <span className="font-mono-display text-[8px] md:text-[9px] font-black text-red-500/60 rotate-90 uppercase leading-none tracking-tighter">OFF-RANGE</span>
-                      </div>
+                  <div 
+                    key={m} 
+                    className={`absolute top-0 flex flex-col items-center border-r border-black/20 transition-all duration-200 ${isBlack ? 'z-20 h-[62%]' : 'z-10 h-full'}`} 
+                    style={{ 
+                      left: `${left}%`, 
+                      width: `${right - left}%`,
+                      background: isHighlighted ? highlightColor : (isBlack ? baseBlack : baseWhite),
+                      borderRadius: isBlack ? '0 0 3px 3px' : '0 0 2px 2px',
+                      boxShadow: isBlack 
+                        ? `0 3px 6px rgba(0,0,0,0.4), inset 0 -1px 1px rgba(255,255,255,0.05)${isHighlighted ? `, 0 0 12px ${highlightColor}80` : ''}` 
+                        : `inset 0 -2px 4px rgba(0,0,0,0.05)${isHighlighted ? `, inset 0 -8px 20px rgba(0,0,0,0.1), 0 0 15px ${highlightColor}60` : ''}`,
+                      zIndex: isBlack ? 20 : 10,
+                      opacity: isHighlighted ? 1 : (isBlack ? 1 : 0.95)
+                    }}
+                  >
+
+                    {isLockedMatch && (
+                      <div className="absolute inset-x-1 bottom-1 h-1 rounded-full bg-white/40 animate-pulse" />
                     )}
                   </div>
                 );
@@ -664,6 +695,7 @@ export default function Index() {
                 <div className="font-mono-display text-xs text-muted-foreground">{getClosest12TET(hoveredHarm.freq).name} <span className="text-foreground">{getClosest12TET(hoveredHarm.freq).cents.toFixed(1)}¢</span></div>
               </div>
             )}
+          </div>
           </div>
 
           <PsychoChart title="III. Biological (Bark)" desc="Ear resolution — clashes occur when Δ < 1.0z." dataKey="bark" />
