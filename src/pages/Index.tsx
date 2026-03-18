@@ -257,8 +257,22 @@ export default function Index() {
     if (!active || !payload?.length) return null;
     const { hz, bark, mel } = payload[0].payload;
     const tet = getClosest12TET(hz);
+    
+    // Find if we are close to a harmonic to consolidate tooltips
+    const closestHarm = activeHarmonics.find(h => {
+      const cents = Math.abs(1200 * Math.log2(h.freq / hz));
+      return cents < 50;
+    });
+
     return (
       <div className="rounded border border-border bg-card px-3 py-2 shadow-xl" style={{ pointerEvents: 'none', zIndex: 1000 }}>
+        {closestHarm && (
+          <div className="mb-2 border-b border-border pb-1.5">
+            <div className="font-mono-display text-xs font-black uppercase tracking-tighter" style={{ color: closestHarm.color }}>
+              {closestHarm.note} {closestHarm.isFund ? 'Fundamental' : `Harmonic ${closestHarm.degree}`}
+            </div>
+          </div>
+        )}
         <div className="font-mono-display text-sm md:text-base font-extrabold text-foreground">{hz.toFixed(1)} Hz</div>
         <div className="font-mono-display text-xs md:text-sm text-muted-foreground">{bark.toFixed(2)}z | {mel.toFixed(0)}m</div>
         <div className="mt-1 border-t border-border pt-1 font-mono-display text-xs md:text-sm text-muted-foreground">
@@ -290,7 +304,7 @@ export default function Index() {
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData} margin={{ top: 4, right: 8, left: 8, bottom: 4 }}>
               <CartesianGrid strokeDasharray="1 4" stroke={COLOR_BORDER} vertical={false} />
-              <XAxis dataKey={dataKey} type="number" domain={[getVal(MIN_F, dataKey), getVal(MAX_F, dataKey)]} hide />
+              <XAxis dataKey={dataKey} type="number" domain={[getVal(MIN_F, dataKey), getVal(MAX_F, dataKey)]} padding={{ left: 0, right: 0 }} hide />
               <YAxis hide domain={[0, 100]} />
               <RechartsTooltip 
                 content={<ChartTooltipContent />} 
@@ -320,15 +334,31 @@ export default function Index() {
             </LineChart>
           </ResponsiveContainer>
           <div className="pointer-events-none absolute inset-0 z-10">
-            <div className="relative h-full w-full" style={{ margin: '0 8px' }}>
+            <div className="relative h-full w-full" style={{ padding: '0 8px' }}>
               {activeHarmonics.map(h => {
-                if (h.isFund) return null;
                 const p = getPct(h.freq, dataKey);
                 const isHighlighted = highlightedPair
                   ? (h.id === highlightedPair.id1 || h.id === highlightedPair.id2)
                   : true;
+                const isNoteX = h.note === 'X';
+                const isVisible = p >= 0 && p <= 100;
+                
                 return (
-                  <div key={`lbl-${h.id}`} className="font-mono-display absolute bottom-0 text-[9px] md:text-[10px] lg:text-[11px] font-bold" style={{ left: `${p}%`, transform: 'translateX(-50%)', color: h.color, opacity: isHighlighted ? 0.8 : (p > 100 ? 0 : 0.1), visibility: p > 100 ? 'hidden' : 'visible' }}>H{h.degree}</div>
+                  <div 
+                    key={`lbl-${h.id}`} 
+                    className={`font-mono-display absolute z-10 flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-black leading-none text-white shadow-sm transition-opacity`} 
+                    style={{ 
+                      left: `${p}%`, 
+                      top: isNoteX ? 'auto' : '4px',
+                      bottom: isNoteX ? '4px' : 'auto',
+                      transform: 'translateX(-50%)', 
+                      backgroundColor: h.color, 
+                      opacity: isVisible ? (isHighlighted ? 1 : 0.1) : 0, 
+                      visibility: isVisible ? 'visible' : 'hidden' 
+                    }}
+                  >
+                    {h.isFund ? 'F' : h.degree}
+                  </div>
                 );
               })}
             </div>
@@ -685,12 +715,13 @@ export default function Index() {
                 );
               })}
             </div>
-            {hoveredHarm && hoverPct !== null && !isLocked && (
+            {/* Floating tooltip only for keyboard hover (where there is no Recharts scrubber) */}
+            {hoveredHarm && hoverPct !== null && !isLocked && !activeSpectrum && (
               <div
                 className="pointer-events-none absolute z-50 rounded border bg-card px-3 py-2 shadow-xl"
                 style={{ bottom: '100%', left: `${hoverPct}%`, transform: 'translateX(-50%)', borderColor: hoveredHarm.color, marginBottom: 6, whiteSpace: 'nowrap' }}
               >
-                <div className="font-mono-display text-[11px] font-extrabold" style={{ color: hoveredHarm.color }}>{hoveredHarm.note} H{hoveredHarm.degree}</div>
+                <div className="font-mono-display text-[11px] font-extrabold" style={{ color: hoveredHarm.color }}>{hoveredHarm.note} {hoveredHarm.isFund ? 'Fundamental' : `H${hoveredHarm.degree}`}</div>
                 <div className="font-mono-display text-sm font-bold text-foreground">{hoveredHarm.freq.toFixed(1)} Hz</div>
                 <div className="font-mono-display text-xs text-muted-foreground">{getClosest12TET(hoveredHarm.freq).name} <span className="text-foreground">{getClosest12TET(hoveredHarm.freq).cents.toFixed(1)}¢</span></div>
               </div>
