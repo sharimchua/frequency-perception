@@ -1,10 +1,10 @@
 import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { LineChart, XAxis, YAxis, CartesianGrid, ResponsiveContainer, ReferenceLine, Tooltip as RechartsTooltip, Line } from 'recharts';
-import { Activity, Layers, AlertTriangle, X, Lightbulb, ExternalLink } from 'lucide-react';
+import { Activity, Layers, AlertTriangle, X, Lightbulb, ExternalLink, ChevronLeft, ChevronRight, Lock, Unlock } from 'lucide-react';
 import {
   MIN_F, MAX_F, HARMONIC_COUNT, INTERVALS, INTERVAL_FACTS,
   midiToFreq, freqToMidi, toBark, toMel, getNoteName, getClosest12TET, getVal, getPct,
-  getHarmonicFacts,
+  getHarmonicFacts, getInterferenceFacts, getContextualFacts,
   type Harmonic, type Interference, type HarmonicFact,
 } from '@/lib/frequency-utils';
 
@@ -22,7 +22,6 @@ export default function Index() {
   const [stDiff, setStDiff] = useState(7);
   const [showOvertones, setShowOvertones] = useState(true);
   const [highlightedPair, setHighlightedPair] = useState<{ id1: string; id2: string } | null>(null);
-  const [factIndex, setFactIndex] = useState(0);
 
   const keyboardRef = useRef<HTMLDivElement>(null);
   const [hoveredHarm, setHoveredHarm] = useState<Harmonic | null>(null);
@@ -30,6 +29,7 @@ export default function Index() {
   const [harmonicFacts, setHarmonicFacts] = useState<HarmonicFact[]>([]);
   const [harmonicFactIdx, setHarmonicFactIdx] = useState(0);
   const [activeSpectrum, setActiveSpectrum] = useState<SpectrumKey | null>(null);
+  const [isLocked, setIsLocked] = useState(false);
 
   const midiY = useMemo(() => midiX + stDiff, [midiX, stDiff]);
   const freqX = useMemo(() => midiToFreq(midiX), [midiX]);
@@ -73,14 +73,8 @@ export default function Index() {
     return clashes.sort((a, b) => a.barkDist - b.barkDist);
   }, [activeHarmonics]);
 
-  // Rotate interval facts
-  useEffect(() => { setFactIndex(0); }, [stDiff]);
-  useEffect(() => {
-    const facts = INTERVAL_FACTS[stDiff] || INTERVAL_FACTS[0];
-    if (facts.length <= 1) return;
-    const timer = setInterval(() => setFactIndex(prev => (prev + 1) % facts.length), 8000);
-    return () => clearInterval(timer);
-  }, [stDiff]);
+  // Manual fact index management
+  useEffect(() => { setHarmonicFactIdx(0); }, [stDiff, hoveredHarm, highlightedPair]);
 
   // Update harmonic facts when hovered harmonic changes
   useEffect(() => {
@@ -93,11 +87,93 @@ export default function Index() {
     setHarmonicFactIdx(0);
   }, [hoveredHarm, activeSpectrum, midiX, midiY]);
 
-  const currentFact = (INTERVAL_FACTS[stDiff] || INTERVAL_FACTS[0])[factIndex] || '';
+  // Interference pair facts (when clicking a pill)
+  const interferenceFacts = useMemo<HarmonicFact[]>(() => {
+    if (!highlightedPair) return [];
+    const clash = interferences.find(c => c.h1.id === highlightedPair.id1 && c.h2.id === highlightedPair.id2);
+    if (!clash) return [];
+    const all = getInterferenceFacts(clash.h1, clash.h2, clash.barkDist, stDiff);
+    return activeSpectrum ? all.filter(f => !f.spectrum || f.spectrum === activeSpectrum) : all;
+  }, [highlightedPair, interferences, stDiff, activeSpectrum]);
+
+  // Contextual facts about the two notes' relationship
+  const contextualFacts = useMemo<HarmonicFact[]>(() => {
+    if (stDiff === 0) return [];
+    const all = getContextualFacts(harmonicsX, harmonicsY, stDiff, activeSpectrum);
+    return activeSpectrum ? all.filter(f => !f.spectrum || f.spectrum === activeSpectrum) : all;
+  }, [harmonicsX, harmonicsY, stDiff, activeSpectrum]);
+
   const currentIntervalName = INTERVALS.find(iv => iv.semi === stDiff)?.full || 'Interval';
 
-  const handleChartHover = useCallback((dataKey: SpectrumKey, e: React.MouseEvent, containerRef: HTMLDivElement | null) => {
+  // Combined default facts: interval facts + contextual facts, rotating
+  const defaultFacts = useMemo(() => {
+    const intervalFacts = (INTERVAL_FACTS[stDiff] || INTERVAL_FACTS[0]).map(text => ({ text, label: currentIntervalName }));
+    const ctxFacts = contextualFacts.map(f => ({ text: f.text, label: `${currentIntervalName} — Harmonic Analysis` }));
+    return [...intervalFacts, ...ctxFacts];
+  }, [stDiff, contextualFacts, currentIntervalName]);
+
+  const activeFacts = useMemo(() => {
+    if (hoveredHarm && harmonicFacts.length > 0) return harmonicFacts;
+    if (highlightedPair && interferenceFacts.length > 0) return interferenceFacts;
+    return defaultFacts;
+  }, [hoveredHarm, harmonicFacts, highlightedPair, interferenceFacts, defaultFacts]);
+
+  const currentFactIndex = harmonicFactIdx;
+
+  const nextFact = useCallback(() => {
+    setHarmonicFactIdx(prev => (prev + 1) % (activeFacts.length || 1));
+  }, [activeFacts]);
+
+  const prevFact = useCallback(() => {
+    setHarmonicFactIdx(prev => (prev - 1 + activeFacts.length) % (activeFacts.length || 1));
+  }, [activeFacts]);
+
+  useEffect(() => {
+    if (!isLocked) {
+      setHarmonicFactIdx(0);
+    }
+  }, [hoveredHarm, highlightedPair, isLocked]);
+
+  const toggleLock = useCallback((h: Harmonic | null) => {
+    if (h) {
+      setHoveredHarm(h);
+      setHoverPct(getPct(h.freq, 'log')); // default to log pct for visual consistency
+      setIsLocked(true);
+      setHighlightedPair(null); // Priority: Lock tone clears interference selection
+    } else {
+      setIsLocked(false);
+      setHoveredHarm(null);
+      setHoverPct(null);
+      setActiveSpectrum(null);
+    }
+  }, []);
+
+  const handleChartClick = useCallback((dataKey: SpectrumKey, e: React.MouseEvent, containerRef: HTMLDivElement | null) => {
     if (!containerRef) return;
+    const rect = containerRef.getBoundingClientRect();
+    const frac = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    const minV = getVal(MIN_F, dataKey);
+    const maxV = getVal(MAX_F, dataKey);
+    const val = frac * (maxV - minV) + minV;
+    
+    let hz: number;
+    if (dataKey === 'hz') hz = val;
+    else if (dataKey === 'log') hz = Math.pow(2, val);
+    else if (dataKey === 'bark') hz = val * 100;
+    else hz = 700 * (Math.pow(10, val / 2595) - 1);
+
+    let closest: Harmonic | null = null;
+    let minCents = Infinity;
+    activeHarmonics.forEach(h => {
+      const cents = Math.abs(1200 * Math.log2(h.freq / hz));
+      if (cents < minCents) { minCents = cents; closest = h; }
+    });
+
+    if (closest) toggleLock(closest);
+  }, [activeHarmonics, toggleLock, isLocked]);
+
+  const handleChartHover = useCallback((dataKey: SpectrumKey, e: React.MouseEvent, containerRef: HTMLDivElement | null) => {
+    if (!containerRef || isLocked) return;
     const rect = containerRef.getBoundingClientRect();
     const frac = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
     const minV = getVal(MIN_F, dataKey);
@@ -124,10 +200,27 @@ export default function Index() {
       setHoveredHarm(null);
       setActiveSpectrum(null);
     }
-  }, [activeHarmonics]);
+  }, [activeHarmonics, isLocked]);
+
+  const handleKbClick = useCallback((e: React.MouseEvent) => {
+    if (!keyboardRef.current) return;
+    const rect = keyboardRef.current.getBoundingClientRect();
+    const frac = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    const logF = frac * (Math.log2(MAX_F) - Math.log2(MIN_F)) + Math.log2(MIN_F);
+    const f = Math.pow(2, logF);
+    
+    let closest: Harmonic | null = null;
+    let minCents = Infinity;
+    activeHarmonics.forEach(h => {
+      const cents = Math.abs(1200 * Math.log2(h.freq / f));
+      if (cents < minCents) { minCents = cents; closest = h; }
+    });
+
+    if (closest) toggleLock(closest);
+  }, [activeHarmonics, toggleLock, isLocked]);
 
   const handleKbMove = useCallback((e: React.MouseEvent) => {
-    if (!keyboardRef.current) return;
+    if (!keyboardRef.current || isLocked) return;
     const rect = keyboardRef.current.getBoundingClientRect();
     const frac = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
     const logF = frac * (Math.log2(MAX_F) - Math.log2(MIN_F)) + Math.log2(MIN_F);
@@ -146,13 +239,17 @@ export default function Index() {
       setHoveredHarm(null);
       setActiveSpectrum(null);
     }
-  }, [activeHarmonics]);
+  }, [activeHarmonics, isLocked]);
 
   const toggleHighlight = (h1: Harmonic, h2: Harmonic) => {
     if (highlightedPair && highlightedPair.id1 === h1.id && highlightedPair.id2 === h2.id) {
       setHighlightedPair(null);
+      setIsLocked(false);
     } else {
       setHighlightedPair({ id1: h1.id, id2: h2.id });
+      setIsLocked(true);
+      setHoveredHarm(null); // Priority: Locking pair clears tone hover/lock
+      setHoverPct(null);
     }
   };
 
@@ -185,29 +282,38 @@ export default function Index() {
         <div
           ref={chartRef}
           className="relative border border-border bg-card h-14 md:h-20 lg:h-24"
-          style={{ cursor: 'crosshair' }}
+          style={{ cursor: isLocked ? 'default' : 'crosshair' }}
           onMouseMove={(e) => handleChartHover(dataKey, e, chartRef.current)}
-          onMouseLeave={() => { setHoveredHarm(null); setActiveSpectrum(null); }}
+          onMouseLeave={() => { if (!isLocked) { setHoveredHarm(null); setActiveSpectrum(null); } }}
+          onClick={(e) => handleChartClick(dataKey, e, chartRef.current)}
         >
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData} margin={{ top: 4, right: 8, left: 8, bottom: 4 }}>
               <CartesianGrid strokeDasharray="1 4" stroke={COLOR_BORDER} vertical={false} />
               <XAxis dataKey={dataKey} type="number" domain={[getVal(MIN_F, dataKey), getVal(MAX_F, dataKey)]} hide />
               <YAxis hide domain={[0, 100]} />
-              <RechartsTooltip content={<ChartTooltipContent />} cursor={{ stroke: COLOR_BORDER }} isAnimationActive={false} allowEscapeViewBox={{ x: true, y: true }} wrapperStyle={{ zIndex: 1000 }} />
+              <RechartsTooltip 
+                content={<ChartTooltipContent />} 
+                cursor={{ stroke: COLOR_BORDER }} 
+                isAnimationActive={false} 
+                allowEscapeViewBox={{ x: true, y: true }} 
+                wrapperStyle={{ zIndex: 1000, visibility: isLocked ? 'hidden' : 'visible' }} 
+              />
               <Line type="monotone" dataKey="y" stroke="transparent" dot={false} activeDot={{ r: 3, fill: '#fff' }} />
               {activeHarmonics.map(h => {
                 const isHighlighted = highlightedPair
                   ? (h.id === highlightedPair.id1 || h.id === highlightedPair.id2)
                   : true;
                 const isHovered = hoveredHarm?.id === h.id;
+                const isLockedMatch = isLocked && isHovered;
                 return (
                   <ReferenceLine
                     key={h.id}
                     x={getVal(h.freq, dataKey)}
                     stroke={h.color}
-                    strokeWidth={isHovered ? 3 : h.isFund ? 2 : 1}
+                    strokeWidth={isLockedMatch ? 4 : isHovered ? 3 : h.isFund ? 2 : 1}
                     strokeOpacity={isHighlighted ? (h.isFund ? 1 : 0.7) : 0.1}
+                    className={isLockedMatch ? 'animate-heartbeat' : ''}
                   />
                 );
               })}
@@ -244,6 +350,18 @@ export default function Index() {
         .interference-pill { transition: all 0.15s ease; cursor: pointer; }
         .interference-pill:hover { filter: brightness(1.3); transform: translateY(-1px); }
         .interference-pill.active { box-shadow: inset 0 0 0 2px hsl(33,90%,55%); }
+        @keyframes heartbeat {
+          0% { stroke-opacity: 1; stroke-width: 3; }
+          50% { stroke-opacity: 0.4; stroke-width: 5; }
+          100% { stroke-opacity: 1; stroke-width: 3; }
+        }
+        @keyframes glow-pulse {
+          0% { opacity: 1; filter: drop-shadow(0 0 2px var(--pulse-color)); }
+          50% { opacity: 0.6; filter: drop-shadow(0 0 8px var(--pulse-color)); }
+          100% { opacity: 1; filter: drop-shadow(0 0 2px var(--pulse-color)); }
+        }
+        .animate-heartbeat { animation: heartbeat 1.5s ease-in-out infinite; }
+        .animate-glow-pulse { animation: glow-pulse 1.5s ease-in-out infinite; }
       `}</style>
 
       {/* Sticky Header */}
@@ -359,23 +477,121 @@ export default function Index() {
           </div>
         </div>
 
-        {/* Fun Fact Bar — shows harmonic fact if hovering, otherwise interval fact */}
-        <div className="mt-2 flex items-start gap-2.5 rounded border border-primary/30 bg-primary/5 px-3 py-2">
-          <Lightbulb size={15} className="mt-0.5 shrink-0 text-primary" />
-          <div className="min-w-0">
-            {hoveredHarm && harmonicFacts.length > 0 ? (
-              <>
-                <span className="font-mono-display text-[11px] md:text-xs font-bold uppercase tracking-wider text-primary">
-                  {hoveredHarm.note === 'X' ? getNoteName(midiX) : getNoteName(midiY)} — H{hoveredHarm.degree} ({hoveredHarm.freq.toFixed(1)} Hz)
-                  {activeSpectrum && <span className="ml-2 text-muted-foreground">on {activeSpectrum.toUpperCase()} scale</span>}
-                </span>
-                <p className="mt-0.5 text-sm md:text-base leading-snug text-foreground/80">{harmonicFacts[harmonicFactIdx % harmonicFacts.length]?.text}</p>
-              </>
-            ) : (
-              <>
-                <span className="font-mono-display text-[11px] md:text-xs font-bold uppercase tracking-wider text-primary">{currentIntervalName}</span>
-                <p className="mt-0.5 text-sm md:text-base leading-snug text-foreground/80">{currentFact}</p>
-              </>
+        {/* Fun Fact Bar — Unified layout to prevent height shifts */}
+        <div className={`mt-2 flex flex-col gap-2 rounded border px-3 py-2 transition-all duration-300 ${isLocked ? 'border-primary/50 bg-primary/[0.07] shadow-sm' : 'border-primary/30 bg-primary/5'}`}>
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start gap-2.5 min-w-0 flex-1">
+              <Lightbulb size={15} className={`mt-0.5 shrink-0 ${isLocked ? 'text-primary animate-pulse' : 'text-primary'}`} />
+              <div className="min-w-0 flex-1">
+                {/* Unified Header & Dashboard */}
+                <div className="flex flex-col gap-1.5 mb-2">
+                    <div className="flex items-center gap-2">
+                      {isLocked ? (
+                        <button
+                          onClick={() => toggleLock(null)}
+                          className="group flex items-center gap-1.5 rounded bg-primary px-2 py-0.5 border border-primary hover:bg-transparent hover:text-primary transition-all duration-200"
+                          title="Click to Unlock"
+                        >
+                          <span className="font-mono-display text-xs md:text-sm font-black text-primary-foreground group-hover:text-primary uppercase tracking-tight">
+                            {hoveredHarm ? `${hoveredHarm.note}H${hoveredHarm.degree}` : highlightedPair ? `${highlightedPair.id1} + ${highlightedPair.id2}` : currentIntervalName}
+                          </span>
+                          <Lock size={12} className="text-primary-foreground group-hover:text-primary animate-pulse" />
+                          <span className="font-mono-display text-[9px] font-black uppercase tracking-widest ml-1 opacity-80 group-hover:opacity-100">Locked</span>
+                        </button>
+                      ) : (
+                        <div className="flex items-center gap-1.5 rounded bg-primary/20 px-2 py-0.5 border border-primary/30">
+                          <span className="font-mono-display text-xs md:text-sm font-black text-primary uppercase tracking-tight">
+                            {hoveredHarm ? `${hoveredHarm.note}H${hoveredHarm.degree}` : highlightedPair ? `${highlightedPair.id1} + ${highlightedPair.id2}` : currentIntervalName}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  
+                  {/* Quad-Spectrum Frequency Dashboard (Unified Style) */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 rounded-md bg-background/40 border border-border/50 p-2">
+                    {hoveredHarm ? (
+                      <>
+                        <div className="flex flex-col">
+                          <span className="font-mono text-[9px] uppercase tracking-tighter text-muted-foreground leading-none mb-1">Physical</span>
+                          <span className="font-mono-display text-xs font-bold text-foreground">{hoveredHarm.freq.toFixed(1)}<span className="text-[10px] ml-0.5 opacity-50 font-normal">Hz</span></span>
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="font-mono text-[9px] uppercase tracking-tighter text-muted-foreground leading-none mb-1">Theoretical</span>
+                          <span className="font-mono-display text-xs font-bold text-foreground">{getClosest12TET(hoveredHarm.freq).name}<span className="text-[10px] ml-1 opacity-50 font-normal">{getClosest12TET(hoveredHarm.freq).cents > 0 ? '+' : ''}{getClosest12TET(hoveredHarm.freq).cents.toFixed(1)}¢</span></span>
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="font-mono text-[9px] uppercase tracking-tighter text-muted-foreground leading-none mb-1">Biological</span>
+                          <span className="font-mono-display text-xs font-bold text-foreground">{toBark(hoveredHarm.freq).toFixed(2)}<span className="text-[10px] ml-0.5 opacity-50 font-normal">z</span></span>
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="font-mono text-[9px] uppercase tracking-tighter text-muted-foreground leading-none mb-1">Psychological</span>
+                          <span className="font-mono-display text-xs font-bold text-foreground">{toMel(hoveredHarm.freq).toFixed(0)}<span className="text-[10px] ml-0.5 opacity-50 font-normal">m</span></span>
+                        </div>
+                      </>
+                    ) : highlightedPair ? (
+                      <>
+                        <div className="flex flex-col">
+                          <span className="font-mono text-[9px] uppercase tracking-tighter text-muted-foreground leading-none mb-1">Harmonic X</span>
+                          <span className="font-mono-display text-xs font-bold text-foreground">{activeHarmonics.find(h=>h.id===highlightedPair.id1)?.freq.toFixed(1)}<span className="text-[10px] ml-0.5 opacity-50 font-normal">Hz</span></span>
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="font-mono text-[9px] uppercase tracking-tighter text-muted-foreground leading-none mb-1">Harmonic Y</span>
+                          <span className="font-mono-display text-xs font-bold text-foreground">{activeHarmonics.find(h=>h.id===highlightedPair.id2)?.freq.toFixed(1)}<span className="text-[10px] ml-0.5 opacity-50 font-normal">Hz</span></span>
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="font-mono text-[9px] uppercase tracking-tighter text-muted-foreground leading-none mb-1">Clash (Bark)</span>
+                          <span className="font-mono-display text-xs font-bold text-gold">Δ {Math.abs(toBark(activeHarmonics.find(h=>h.id===highlightedPair.id1)?.freq!) - toBark(activeHarmonics.find(h=>h.id===highlightedPair.id2)?.freq!)).toFixed(2)}<span className="text-[10px] ml-0.5 opacity-50 font-normal">z</span></span>
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="font-mono text-[9px] uppercase tracking-tighter text-muted-foreground leading-none mb-1">Clash (Mel)</span>
+                          <span className="font-mono-display text-xs font-bold text-gold">Δ {Math.abs(toMel(activeHarmonics.find(h=>h.id===highlightedPair.id1)?.freq!) - toMel(activeHarmonics.find(h=>h.id===highlightedPair.id2)?.freq!)).toFixed(0)}<span className="text-[10px] ml-0.5 opacity-50 font-normal">m</span></span>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex flex-col">
+                          <span className="font-mono text-[9px] uppercase tracking-tighter text-muted-foreground leading-none mb-1">Note X Fund.</span>
+                          <span className="font-mono-display text-xs font-bold text-foreground">{freqX.toFixed(1)}<span className="text-[10px] ml-0.5 opacity-50 font-normal">Hz</span></span>
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="font-mono text-[9px] uppercase tracking-tighter text-muted-foreground leading-none mb-1">Theoretical</span>
+                          <span className="font-mono-display text-xs font-bold text-foreground">{currentIntervalName}<span className="text-[10px] ml-1 opacity-50 font-normal">+{stDiff}st</span></span>
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="font-mono text-[9px] uppercase tracking-tighter text-muted-foreground leading-none mb-1">Bark Gap</span>
+                          <span className="font-mono-display text-xs font-bold text-primary">Δ {Math.abs(toBark(freqX) - toBark(freqY)).toFixed(2)}<span className="text-[10px] ml-0.5 opacity-50 font-normal">z</span></span>
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="font-mono text-[9px] uppercase tracking-tighter text-muted-foreground leading-none mb-1">Mel Distance</span>
+                          <span className="font-mono-display text-xs font-bold text-primary">Δ {Math.abs(toMel(freqX) - toMel(freqY)).toFixed(0)}<span className="text-[10px] ml-0.5 opacity-50 font-normal">m</span></span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Fact Text */}
+                <p className="text-sm md:text-base leading-snug text-foreground/90 font-medium min-h-[3rem]">
+                  {activeFacts[harmonicFactIdx % activeFacts.length]?.text}
+                </p>
+              </div>
+            </div>
+
+            {/* Fact Controls — Always visible if multiple facts exist */}
+            {activeFacts.length > 1 && (
+              <div className="flex shrink-0 flex-col items-center gap-1.5 min-w-[60px]">
+                <div className="flex items-center gap-1.5 rounded bg-primary/10 p-1 border border-primary/20">
+                  <button onClick={prevFact} className="rounded p-0.5 hover:bg-primary/20 transition-colors" title="Previous Fact">
+                    <ChevronLeft size={16} />
+                  </button>
+                  <span className="font-mono text-[10px] md:text-xs font-bold px-1 tabular-nums text-primary/70">
+                    {(harmonicFactIdx % activeFacts.length) + 1} / {activeFacts.length}
+                  </span>
+                  <button onClick={nextFact} className="rounded p-0.5 hover:bg-primary/20 transition-colors" title="Next Fact">
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+              </div>
             )}
           </div>
         </div>
@@ -392,18 +608,21 @@ export default function Index() {
                 const isHighlighted = highlightedPair
                   ? (h.id === highlightedPair.id1 || h.id === highlightedPair.id2)
                   : true;
+                const isHovered = hoveredHarm?.id === h.id;
+                const isLockedMatch = isLocked && isHovered;
                 return (
                   <div
                     key={`mk-${h.id}-${i}`}
-                    className="absolute bottom-0"
+                    className={`absolute bottom-0 ${isLockedMatch ? 'animate-glow-pulse' : ''}`}
                     style={{
                       left: `${getPct(h.freq, 'log')}%`,
-                      width: h.isFund ? 3 : 2,
+                      width: isLockedMatch ? 4 : (h.isFund ? 3 : 2),
                       height: h.isFund ? '100%' : '50%',
                       background: h.color,
                       transform: 'translateX(-50%)',
-                      opacity: isHighlighted ? 1 : 0.1
-                    }}
+                      opacity: isHighlighted ? 1 : 0.1,
+                      '--pulse-color': h.color
+                    } as any}
                   />
                 );
               })}
@@ -414,9 +633,10 @@ export default function Index() {
             <div
               ref={keyboardRef}
               onMouseMove={handleKbMove}
-              onMouseLeave={() => { setHoveredHarm(null); setActiveSpectrum(null); }}
+              onMouseLeave={() => { if (!isLocked) { setHoveredHarm(null); setActiveSpectrum(null); } }}
+              onClick={handleKbClick}
               className="relative flex overflow-hidden border border-border h-8 md:h-12 lg:h-16"
-              style={{ cursor: 'crosshair' }}
+              style={{ cursor: isLocked ? 'default' : 'crosshair' }}
             >
               {Array.from({ length: 72 }).map((_, i) => {
                 const m = 36 + i;
@@ -434,7 +654,7 @@ export default function Index() {
                 );
               })}
             </div>
-            {hoveredHarm && hoverPct !== null && (
+            {hoveredHarm && hoverPct !== null && !isLocked && (
               <div
                 className="pointer-events-none absolute z-50 rounded border bg-card px-3 py-2 shadow-xl"
                 style={{ bottom: '100%', left: `${hoverPct}%`, transform: 'translateX(-50%)', borderColor: hoveredHarm.color, marginBottom: 6, whiteSpace: 'nowrap' }}
