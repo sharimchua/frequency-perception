@@ -9,8 +9,8 @@ import {
 } from '@/lib/frequency-utils';
 
 // HSL values matching CSS vars for inline chart usage
-const COLOR_NOTE_A = 'hsl(33, 90%, 55%)';
-const COLOR_NOTE_B = 'hsl(200, 60%, 45%)';
+const COLOR_NOTE_X = 'hsl(33, 90%, 55%)';
+const COLOR_NOTE_Y = 'hsl(200, 60%, 45%)';
 const COLOR_BORDER = 'hsl(0, 0%, 16%)';
 const COLOR_TEXT_MUTED = 'hsl(0, 0%, 55%)';
 const COLOR_GOLD = 'hsl(45, 100%, 60%)';
@@ -18,7 +18,7 @@ const COLOR_GOLD = 'hsl(45, 100%, 60%)';
 type SpectrumKey = 'hz' | 'log' | 'bark' | 'mel';
 
 export default function Index() {
-  const [midiA, setMidiA] = useState(69);
+  const [midiX, setMidiX] = useState(69);
   const [stDiff, setStDiff] = useState(7);
   const [showOvertones, setShowOvertones] = useState(true);
   const [highlightedPair, setHighlightedPair] = useState<{ id1: string; id2: string } | null>(null);
@@ -31,22 +31,22 @@ export default function Index() {
   const [harmonicFactIdx, setHarmonicFactIdx] = useState(0);
   const [activeSpectrum, setActiveSpectrum] = useState<SpectrumKey | null>(null);
 
-  const midiB = useMemo(() => Math.min(108, midiA + stDiff), [midiA, stDiff]);
-  const freqA = useMemo(() => midiToFreq(midiA), [midiA]);
-  const freqB = useMemo(() => midiToFreq(midiB), [midiB]);
+  const midiY = useMemo(() => Math.min(108, midiX + stDiff), [midiX, stDiff]);
+  const freqX = useMemo(() => midiToFreq(midiX), [midiX]);
+  const freqY = useMemo(() => midiToFreq(midiY), [midiY]);
 
-  const harmonicsA = useMemo<Harmonic[]>(() => Array.from({ length: HARMONIC_COUNT }, (_, i) => ({
-    id: `A${i + 1}`, note: 'A', degree: i + 1, freq: freqA * (i + 1), color: COLOR_NOTE_A, isFund: i === 0
-  })), [freqA]);
+  const harmonicsX = useMemo<Harmonic[]>(() => Array.from({ length: HARMONIC_COUNT }, (_, i) => ({
+    id: `X${i + 1}`, note: 'X', degree: i + 1, freq: freqX * (i + 1), color: COLOR_NOTE_X, isFund: i === 0
+  })), [freqX]);
 
-  const harmonicsB = useMemo<Harmonic[]>(() => Array.from({ length: HARMONIC_COUNT }, (_, i) => ({
-    id: `B${i + 1}`, note: 'B', degree: i + 1, freq: freqB * (i + 1), color: COLOR_NOTE_B, isFund: i === 0
-  })), [freqB]);
+  const harmonicsY = useMemo<Harmonic[]>(() => Array.from({ length: HARMONIC_COUNT }, (_, i) => ({
+    id: `Y${i + 1}`, note: 'Y', degree: i + 1, freq: freqY * (i + 1), color: COLOR_NOTE_Y, isFund: i === 0
+  })), [freqY]);
 
   const activeHarmonics = useMemo(() => {
-    if (!showOvertones) return stDiff === 0 ? [harmonicsA[0]] : [harmonicsA[0], harmonicsB[0]];
-    return stDiff === 0 ? harmonicsA : [...harmonicsA, ...harmonicsB];
-  }, [showOvertones, stDiff, harmonicsA, harmonicsB]);
+    if (!showOvertones) return stDiff === 0 ? [harmonicsX[0]] : [harmonicsX[0], harmonicsY[0]];
+    return stDiff === 0 ? harmonicsX : [...harmonicsX, ...harmonicsY];
+  }, [showOvertones, stDiff, harmonicsX, harmonicsY]);
 
   const chartData = useMemo(() => {
     const pts = [];
@@ -84,13 +84,13 @@ export default function Index() {
   // Update harmonic facts when hovered harmonic changes
   useEffect(() => {
     if (!hoveredHarm) { setHarmonicFacts([]); return; }
-    const noteName = hoveredHarm.note === 'A' ? getNoteName(midiA) : getNoteName(midiB);
+    const noteName = hoveredHarm.note === 'X' ? getNoteName(midiX) : getNoteName(midiY);
     const allFacts = getHarmonicFacts(hoveredHarm.degree, hoveredHarm.freq, noteName);
     // Filter by active spectrum if set
     const filtered = allFacts.filter(f => !f.spectrum || f.spectrum === activeSpectrum);
     setHarmonicFacts(filtered);
     setHarmonicFactIdx(0);
-  }, [hoveredHarm, activeSpectrum, midiA, midiB]);
+  }, [hoveredHarm, activeSpectrum, midiX, midiY]);
 
   const currentFact = (INTERVAL_FACTS[stDiff] || INTERVAL_FACTS[0])[factIndex] || '';
   const currentIntervalName = INTERVALS.find(iv => iv.semi === stDiff)?.full || 'Interval';
@@ -234,8 +234,8 @@ export default function Index() {
       <style>{`
         .fa-slider { -webkit-appearance: none; width: 100%; height: 3px; background: hsl(0,0%,16%); outline: none; border-radius: 2px; }
         .fa-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; cursor: pointer; }
-        .slider-a::-webkit-slider-thumb { background: ${COLOR_NOTE_A}; box-shadow: 0 0 8px ${COLOR_NOTE_A}; }
-        .slider-b::-webkit-slider-thumb { background: ${COLOR_NOTE_B}; box-shadow: 0 0 8px ${COLOR_NOTE_B}; }
+        .slider-x::-webkit-slider-thumb { background: ${COLOR_NOTE_X}; box-shadow: 0 0 8px ${COLOR_NOTE_X}; }
+        .slider-y::-webkit-slider-thumb { background: ${COLOR_NOTE_Y}; box-shadow: 0 0 8px ${COLOR_NOTE_Y}; }
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .interference-pill { transition: all 0.15s ease; cursor: pointer; }
         .interference-pill:hover { filter: brightness(1.3); transform: translateY(-1px); }
@@ -260,16 +260,16 @@ export default function Index() {
           </div>
           <div className="flex flex-col sm:flex-row items-end sm:items-center gap-1 sm:gap-4">
             <div className="font-mono-display text-xs sm:text-sm font-semibold text-right sm:text-left leading-tight sm:leading-normal">
-              <span className="text-note-a block sm:inline">{getNoteName(midiA)} ({freqA.toFixed(1)}Hz)</span>
+              <span className="text-note-x block sm:inline">{getNoteName(midiX)} ({freqX.toFixed(1)}Hz)</span>
               <span className="mx-1 sm:mx-2 text-muted-foreground hidden sm:inline">→</span>
-              <span className="text-note-b block sm:inline">{getNoteName(midiB)} ({freqB.toFixed(1)}Hz)</span>
+              <span className="text-note-y block sm:inline">{getNoteName(midiY)} ({freqY.toFixed(1)}Hz)</span>
             </div>
             <div className="hidden items-center gap-3 font-mono-display text-xs font-semibold uppercase lg:flex">
               <span className="text-muted-foreground">Δ</span>
-              <span>Hz: <span className="text-gold">{Math.abs(freqA - freqB).toFixed(1)}</span></span>
+              <span>Hz: <span className="text-gold">{Math.abs(freqX - freqY).toFixed(1)}</span></span>
               <span>Semi: <span className="text-gold">{stDiff}</span></span>
-              <span>Bark: <span className="text-gold">{Math.abs(toBark(freqA) - toBark(freqB)).toFixed(2)}z</span></span>
-              <span>Mel: <span className="text-gold">{Math.abs(toMel(freqA) - toMel(freqB)).toFixed(0)}m</span></span>
+              <span>Bark: <span className="text-gold">{Math.abs(toBark(freqX) - toBark(freqY)).toFixed(2)}z</span></span>
+              <span>Mel: <span className="text-gold">{Math.abs(toMel(freqX) - toMel(freqY)).toFixed(0)}m</span></span>
             </div>
           </div>
         </div>
@@ -282,12 +282,12 @@ export default function Index() {
           <div className="rounded border border-border bg-card p-3">
             <div className="mb-2 flex items-center gap-3">
               <div className="flex-1">
-                <label className="font-mono-display text-[10px] md:text-xs font-bold uppercase tracking-wider text-note-a">Note A</label>
-                <input type="range" min="21" max="108" value={midiA} onChange={(e) => { const v = parseInt(e.target.value); if (v + stDiff <= 108) setMidiA(v); else setMidiA(108 - stDiff); }} className="fa-slider slider-a" />
+                <label className="font-mono-display text-[10px] md:text-xs font-bold uppercase tracking-wider text-note-x">Note X</label>
+                <input type="range" min="21" max="108" value={midiX} onChange={(e) => { const v = parseInt(e.target.value); if (v + stDiff <= 108) setMidiX(v); else setMidiX(108 - stDiff); }} className="fa-slider slider-x" />
               </div>
               <div className="flex-1">
-                <label className="font-mono-display text-[10px] md:text-xs font-bold uppercase tracking-wider text-note-b">Note B</label>
-                <input type="range" min="21" max="108" value={midiB} onChange={(e) => setStDiff(Math.max(0, parseInt(e.target.value) - midiA))} className="fa-slider slider-b" />
+                <label className="font-mono-display text-[10px] md:text-xs font-bold uppercase tracking-wider text-note-y">Note Y</label>
+                <input type="range" min="21" max="108" value={midiY} onChange={(e) => setStDiff(Math.max(0, parseInt(e.target.value) - midiX))} className="fa-slider slider-y" />
               </div>
               <button
                 onClick={() => setShowOvertones(!showOvertones)}
@@ -354,7 +354,7 @@ export default function Index() {
             {hoveredHarm && harmonicFacts.length > 0 ? (
               <>
                 <span className="font-mono-display text-[11px] md:text-xs font-bold uppercase tracking-wider text-primary">
-                  {hoveredHarm.note === 'A' ? getNoteName(midiA) : getNoteName(midiB)} — H{hoveredHarm.degree} ({hoveredHarm.freq.toFixed(1)} Hz)
+                  {hoveredHarm.note === 'X' ? getNoteName(midiX) : getNoteName(midiY)} — H{hoveredHarm.degree} ({hoveredHarm.freq.toFixed(1)} Hz)
                   {activeSpectrum && <span className="ml-2 text-muted-foreground">on {activeSpectrum.toUpperCase()} scale</span>}
                 </span>
                 <p className="mt-0.5 text-sm md:text-base leading-snug text-foreground/80">{harmonicFacts[harmonicFactIdx % harmonicFacts.length]?.text}</p>

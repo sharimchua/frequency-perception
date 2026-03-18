@@ -57,8 +57,8 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
-        "note-a": "hsl(var(--note-a))",
-        "note-b": "hsl(var(--note-b))",
+        "note-x": "hsl(var(--note-x))",
+        "note-y": "hsl(var(--note-y))",
         gold: "hsl(var(--gold))",
       },
       borderRadius: {
