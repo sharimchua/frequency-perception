@@ -157,7 +157,7 @@ export default function Index() {
     const minV = getVal(MIN_F, dataKey);
     const maxV = getVal(MAX_F, dataKey);
     const val = frac * (maxV - minV) + minV;
-    
+
     let hz: number;
     if (dataKey === 'hz') hz = val;
     else if (dataKey === 'log') hz = Math.pow(2, val);
@@ -210,7 +210,7 @@ export default function Index() {
     const frac = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
     const logF = frac * (Math.log2(MAX_F) - Math.log2(MIN_F)) + Math.log2(MIN_F);
     const f = Math.pow(2, logF);
-    
+
     let closest: Harmonic | null = null;
     let minCents = Infinity;
     activeHarmonics.forEach(h => {
@@ -259,7 +259,7 @@ export default function Index() {
     if (!active || !payload?.length) return null;
     const { hz, bark, mel } = payload[0].payload;
     const tet = getClosest12TET(hz);
-    
+
     // Find if we are close to a harmonic to consolidate tooltips
     const closestHarm = activeHarmonics.find(h => {
       const cents = Math.abs(1200 * Math.log2(h.freq / hz));
@@ -308,12 +308,12 @@ export default function Index() {
               <CartesianGrid strokeDasharray="1 4" stroke={COLOR_BORDER} vertical={false} />
               <XAxis dataKey={dataKey} type="number" domain={[getVal(MIN_F, dataKey), getVal(MAX_F, dataKey)]} padding={{ left: 0, right: 0 }} hide />
               <YAxis hide domain={[0, 100]} />
-              <RechartsTooltip 
-                content={<ChartTooltipContent />} 
-                cursor={{ stroke: COLOR_BORDER }} 
-                isAnimationActive={false} 
-                allowEscapeViewBox={{ x: true, y: true }} 
-                wrapperStyle={{ zIndex: 1000, visibility: isLocked ? 'hidden' : 'visible' }} 
+              <RechartsTooltip
+                content={<ChartTooltipContent />}
+                cursor={{ stroke: COLOR_BORDER }}
+                isAnimationActive={false}
+                allowEscapeViewBox={{ x: true, y: true }}
+                wrapperStyle={{ zIndex: 1000, visibility: isLocked ? 'hidden' : 'visible' }}
               />
               <Line type="monotone" dataKey="y" stroke="transparent" dot={false} activeDot={{ r: 3, fill: '#fff' }} />
               {activeHarmonics.map(h => {
@@ -344,19 +344,19 @@ export default function Index() {
                   : true;
                 const isNoteX = h.note === 'X';
                 const isVisible = p >= 0 && p <= 100;
-                
+
                 return (
-                  <div 
-                    key={`lbl-${h.id}`} 
-                    className={`font-mono-display absolute z-10 flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-black leading-none text-white shadow-sm transition-opacity`} 
-                    style={{ 
-                      left: `${p}%`, 
+                  <div
+                    key={`lbl-${h.id}`}
+                    className={`font-mono-display absolute z-10 flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-black leading-none text-white shadow-sm transition-opacity`}
+                    style={{
+                      left: `${p}%`,
                       top: isNoteX ? 'auto' : '4px',
                       bottom: isNoteX ? '4px' : 'auto',
-                      transform: 'translateX(-50%)', 
-                      backgroundColor: isLocked && hoveredHarm?.id === h.id ? COLOR_LOCKED : h.color, 
-                      opacity: isVisible ? (isHighlighted ? 1 : 0.1) : 0, 
-                      visibility: isVisible ? 'visible' : 'hidden' 
+                      transform: 'translateX(-50%)',
+                      backgroundColor: isLocked && hoveredHarm?.id === h.id ? COLOR_LOCKED : h.color,
+                      opacity: isVisible ? (isHighlighted ? 1 : 0.1) : 0,
+                      visibility: isVisible ? 'visible' : 'hidden'
                     }}
                   >
                     {h.isFund ? 'F' : h.degree}
@@ -517,28 +517,28 @@ export default function Index() {
               <div className="min-w-0 flex-1">
                 {/* Unified Header & Dashboard */}
                 <div className="flex flex-col gap-1.5 mb-2">
-                    <div className="flex items-center gap-2">
-                      {isLocked ? (
-                        <button
-                          onClick={() => toggleLock(null)}
-                          className="group flex items-center gap-1.5 rounded bg-[#059669] px-2 py-1 border border-[#059669] hover:bg-transparent hover:text-[#059669] transition-all duration-200 shadow-md"
-                          title="Click to Unlock"
-                        >
-                          <span className="font-mono-display text-xs md:text-sm font-black text-white group-hover:text-[#059669] uppercase tracking-tight">
-                            {hoveredHarm ? `${hoveredHarm.note}H${hoveredHarm.degree}` : highlightedPair ? `${highlightedPair.id1} + ${highlightedPair.id2}` : currentIntervalName}
-                          </span>
-                          <Lock size={12} className="text-white group-hover:text-[#059669] animate-pulse" />
-                          <span className="font-mono-display text-[9px] font-black uppercase tracking-widest ml-1 opacity-90 group-hover:opacity-100 italic transition-all">Locked Analysis</span>
-                        </button>
-                      ) : (
-                        <div className="flex items-center gap-1.5 rounded bg-[#10B981]/15 px-2.5 py-1 border border-[#10B981]/30 shadow-sm">
-                          <span className="font-mono-display text-xs md:text-sm font-black text-[#059669] uppercase tracking-tight">
-                            {hoveredHarm ? `${hoveredHarm.note}H${hoveredHarm.degree}` : highlightedPair ? `${highlightedPair.id1} + ${highlightedPair.id2}` : currentIntervalName}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  
+                  <div className="flex items-center gap-2">
+                    {isLocked ? (
+                      <button
+                        onClick={() => toggleLock(null)}
+                        className="group flex items-center gap-1.5 rounded bg-[#059669] px-2 py-1 border border-[#059669] hover:bg-transparent hover:text-[#059669] transition-all duration-200 shadow-md"
+                        title="Click to Unlock"
+                      >
+                        <span className="font-mono-display text-xs md:text-sm font-black text-white group-hover:text-[#059669] uppercase tracking-tight">
+                          {hoveredHarm ? `${hoveredHarm.note}H${hoveredHarm.degree}` : highlightedPair ? `${highlightedPair.id1} + ${highlightedPair.id2}` : currentIntervalName}
+                        </span>
+                        <Lock size={12} className="text-white group-hover:text-[#059669] animate-pulse" />
+                        <span className="font-mono-display text-[9px] font-black uppercase tracking-widest ml-1 opacity-90 group-hover:opacity-100 italic transition-all">Locked Analysis</span>
+                      </button>
+                    ) : (
+                      <div className="flex items-center gap-1.5 rounded bg-[#10B981]/15 px-2.5 py-1 border border-[#10B981]/30 shadow-sm">
+                        <span className="font-mono-display text-xs md:text-sm font-black text-[#059669] uppercase tracking-tight">
+                          {hoveredHarm ? `${hoveredHarm.note}H${hoveredHarm.degree}` : highlightedPair ? `${highlightedPair.id1} + ${highlightedPair.id2}` : currentIntervalName}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
                   {/* Quad-Spectrum Frequency Dashboard (Unified Style) */}
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 rounded-md bg-background/40 border border-border/50 p-2">
                     {hoveredHarm ? (
@@ -564,19 +564,19 @@ export default function Index() {
                       <>
                         <div className="flex flex-col">
                           <span className="font-mono text-[9px] uppercase tracking-tighter text-muted-foreground leading-none mb-1">Harmonic X</span>
-                          <span className="font-mono-display text-xs font-bold text-foreground">{activeHarmonics.find(h=>h.id===highlightedPair.id1)?.freq.toFixed(1)}<span className="text-[10px] ml-0.5 opacity-50 font-normal">Hz</span></span>
+                          <span className="font-mono-display text-xs font-bold text-foreground">{activeHarmonics.find(h => h.id === highlightedPair.id1)?.freq.toFixed(1)}<span className="text-[10px] ml-0.5 opacity-50 font-normal">Hz</span></span>
                         </div>
                         <div className="flex flex-col">
                           <span className="font-mono text-[9px] uppercase tracking-tighter text-muted-foreground leading-none mb-1">Harmonic Y</span>
-                          <span className="font-mono-display text-xs font-bold text-foreground">{activeHarmonics.find(h=>h.id===highlightedPair.id2)?.freq.toFixed(1)}<span className="text-[10px] ml-0.5 opacity-50 font-normal">Hz</span></span>
+                          <span className="font-mono-display text-xs font-bold text-foreground">{activeHarmonics.find(h => h.id === highlightedPair.id2)?.freq.toFixed(1)}<span className="text-[10px] ml-0.5 opacity-50 font-normal">Hz</span></span>
                         </div>
                         <div className="flex flex-col">
                           <span className="font-mono text-[9px] uppercase tracking-tighter text-muted-foreground leading-none mb-1">Clash (Bark)</span>
-                          <span className="font-mono-display text-xs font-bold text-gold">Δ {Math.abs(toBark(activeHarmonics.find(h=>h.id===highlightedPair.id1)?.freq!) - toBark(activeHarmonics.find(h=>h.id===highlightedPair.id2)?.freq!)).toFixed(2)}<span className="text-[10px] ml-0.5 opacity-50 font-normal">z</span></span>
+                          <span className="font-mono-display text-xs font-bold text-gold">Δ {Math.abs(toBark(activeHarmonics.find(h => h.id === highlightedPair.id1)?.freq!) - toBark(activeHarmonics.find(h => h.id === highlightedPair.id2)?.freq!)).toFixed(2)}<span className="text-[10px] ml-0.5 opacity-50 font-normal">z</span></span>
                         </div>
                         <div className="flex flex-col">
                           <span className="font-mono text-[9px] uppercase tracking-tighter text-muted-foreground leading-none mb-1">Clash (Mel)</span>
-                          <span className="font-mono-display text-xs font-bold text-gold">Δ {Math.abs(toMel(activeHarmonics.find(h=>h.id===highlightedPair.id1)?.freq!) - toMel(activeHarmonics.find(h=>h.id===highlightedPair.id2)?.freq!)).toFixed(0)}<span className="text-[10px] ml-0.5 opacity-50 font-normal">m</span></span>
+                          <span className="font-mono-display text-xs font-bold text-gold">Δ {Math.abs(toMel(activeHarmonics.find(h => h.id === highlightedPair.id1)?.freq!) - toMel(activeHarmonics.find(h => h.id === highlightedPair.id2)?.freq!)).toFixed(0)}<span className="text-[10px] ml-0.5 opacity-50 font-normal">m</span></span>
                         </div>
                       </>
                     ) : (
@@ -589,7 +589,7 @@ export default function Index() {
                           <span className="font-mono text-[9px] uppercase tracking-tighter text-muted-foreground leading-none mb-1">Theoretical</span>
                           <span className="font-mono-display text-xs font-bold text-foreground">{currentIntervalName}<span className="text-[10px] ml-1 opacity-50 font-normal">+{stDiff}st</span></span>
                         </div>
-                         <div className="flex flex-col">
+                        <div className="flex flex-col">
                           <span className="font-mono text-[9px] uppercase tracking-tighter text-muted-foreground leading-none mb-1">Bark Gap</span>
                           <span className="font-mono-display text-xs font-bold text-[#059669]">Δ {Math.abs(toBark(freqX) - toBark(freqY)).toFixed(2)}<span className="text-[10px] ml-0.5 opacity-50 font-normal">z</span></span>
                         </div>
@@ -601,7 +601,7 @@ export default function Index() {
                     )}
                   </div>
                 </div>
-                
+
                 {/* Fact Text */}
                 <p className="text-sm md:text-base leading-snug text-foreground/90 font-medium min-h-[3rem]">
                   {activeFacts[harmonicFactIdx % activeFacts.length]?.text}
@@ -630,109 +630,112 @@ export default function Index() {
 
         {/* Spectrum Charts */}
         <div className="mt-2">
-          <PsychoChart title="I. Physical (Hz)" desc="Absolute air vibration — spacing expands exponentially." dataKey="hz" />
-          <PsychoChart title="II. Theoretical (Log)" desc="Music theory view — intervals are spatially fixed." dataKey="log" />
+          <PsychoChart title="I. Physical (Hz)" desc="Absolute air vibration; spacing expands exponentially. 
+This is the raw mechanical reality of sound: molecules being pushed and pulled through air at specific rates. The exponential spacing you see here mirrors how instruments actually behave in the physical world. The length of a vibrating string — or the volume of air inside a bell — does not scale linearly with the pitch we hear. To double a string's pitch, you halve its length. Each octave packs double the frequency range of the one below it. A grand piano stretches from 27 Hz to 4,186 Hz, yet no octave 'feels' wider than any other. This layer reveals the raw disproportion between physical cause and perceived effect." dataKey="hz" />
+          <PsychoChart title="II. Theoretical (Log)" desc="Music theory view; intervals are spatially fixed. 
+Compress the exponential Hz axis logarithmically and something remarkable happens: the intervals lock into a consistent geometry. Every octave becomes the same width, every perfect fifth the same span. This is the layer music theory lives in — the one that makes notation, scales, and harmony feel stable and predictable regardless of register. It's the mathematical translation between physical reality and musical thought, the grid that makes composition possible." dataKey="log" />
 
           {/* Keyboard Analysis Dashboard */}
           <div className="mt-4 mb-2 rounded-xl border border-border/60 bg-card/30 p-4 pt-3 shadow-inner">
             <div className="mb-3 flex items-center justify-center">
               <span className="font-mono-display text-[10px] md:text-xs font-black uppercase tracking-[0.4em] text-muted-foreground/50">Piano Dashboard</span>
             </div>
-            
+
             <div className="relative rounded-md border border-black/40 bg-[#D7C4B1] p-0.5 shadow-2xl transition-all duration-300">
-            <div className="relative mb-0.5 h-3 md:h-4 lg:h-5">
-              {activeHarmonics.map((h, i) => {
-                const isHighlighted = highlightedPair
-                  ? (h.id === highlightedPair.id1 || h.id === highlightedPair.id2)
-                  : true;
-                const isHovered = hoveredHarm?.id === h.id;
-                const isLockedMatch = isLocked && isHovered;
-                return (
-                  <div
-                    key={`mk-${h.id}-${i}`}
-                    className={`absolute bottom-0 ${isLockedMatch ? 'animate-glow-pulse' : ''}`}
-                    style={{
-                      left: `${getPct(h.freq, 'log')}%`,
-                      width: isLockedMatch ? 4 : (h.isFund ? 3 : 2),
-                      height: h.isFund ? '100%' : '50%',
-                      background: h.color,
-                      transform: 'translateX(-50%)',
-                      opacity: isHighlighted ? 1 : 0.1,
-                      '--pulse-color': h.color
-                    } as any}
-                  />
-                );
-              })}
-              {activeHarmonics.some(h => freqToMidi(h.freq) > 108.5) && (
-                <div className="absolute right-0 top-0 bottom-0 w-1 bg-red-500/40 pointer-events-none z-10" />
+              <div className="relative mb-0.5 h-3 md:h-4 lg:h-5">
+                {activeHarmonics.map((h, i) => {
+                  const isHighlighted = highlightedPair
+                    ? (h.id === highlightedPair.id1 || h.id === highlightedPair.id2)
+                    : true;
+                  const isHovered = hoveredHarm?.id === h.id;
+                  const isLockedMatch = isLocked && isHovered;
+                  return (
+                    <div
+                      key={`mk-${h.id}-${i}`}
+                      className={`absolute bottom-0 ${isLockedMatch ? 'animate-glow-pulse' : ''}`}
+                      style={{
+                        left: `${getPct(h.freq, 'log')}%`,
+                        width: isLockedMatch ? 4 : (h.isFund ? 3 : 2),
+                        height: h.isFund ? '100%' : '50%',
+                        background: h.color,
+                        transform: 'translateX(-50%)',
+                        opacity: isHighlighted ? 1 : 0.1,
+                        '--pulse-color': h.color
+                      } as any}
+                    />
+                  );
+                })}
+                {activeHarmonics.some(h => freqToMidi(h.freq) > 108.5) && (
+                  <div className="absolute right-0 top-0 bottom-0 w-1 bg-red-500/40 pointer-events-none z-10" />
+                )}
+              </div>
+              <div
+                ref={keyboardRef}
+                onMouseMove={handleKbMove}
+                onMouseLeave={() => { if (!isLocked) { setHoveredHarm(null); setActiveSpectrum(null); } }}
+                onClick={handleKbClick}
+                className="relative border border-black/20 h-8 md:h-12 lg:h-16 bg-[#D7C4B1] overflow-hidden"
+                style={{ cursor: isLocked ? 'default' : 'crosshair' }}
+              >
+                {Array.from({ length: 135 - 15 + 1 }).map((_, i) => {
+                  const m = 15 + i;
+                  const isBlack = [1, 3, 6, 8, 10].includes(m % 12);
+                  const f = midiToFreq(m);
+                  const nextF = midiToFreq(m + 1);
+                  const left = getPct(f, 'log');
+                  const right = getPct(nextF, 'log');
+                  const hMatch = activeHarmonics.find(h => Math.round(freqToMidi(h.freq)) === m);
+                  const isFund = hMatch?.isFund;
+                  const isHighlighted = hMatch && (!highlightedPair || hMatch.id === highlightedPair.id1 || hMatch.id === highlightedPair.id2);
+                  const isLockedMatch = isLocked && hoveredHarm?.id === hMatch?.id;
+
+                  // Colors from screenshot
+                  const baseWhite = '#D7C4B1';
+                  const baseBlack = '#1A1A1A';
+                  const highlightColor = isLockedMatch ? COLOR_LOCKED : (hMatch?.color || '#FF9F43');
+                  const noteName = NOTE_NAMES[m % 12];
+
+                  return (
+                    <div
+                      key={m}
+                      className={`absolute top-0 flex flex-col items-center border-r border-black/20 transition-all duration-200 ${isBlack ? 'z-20 h-[62%]' : 'z-10 h-full'}`}
+                      style={{
+                        left: `${left}%`,
+                        width: `${right - left}%`,
+                        background: isHighlighted ? highlightColor : (isBlack ? baseBlack : baseWhite),
+                        borderRadius: isBlack ? '0 0 3px 3px' : '0 0 2px 2px',
+                        boxShadow: isBlack
+                          ? `0 3px 6px rgba(0,0,0,0.4), inset 0 -1px 1px rgba(255,255,255,0.05)${isHighlighted ? `, 0 0 12px ${highlightColor}80` : ''}`
+                          : `inset 0 -2px 4px rgba(0,0,0,0.05)${isHighlighted ? `, inset 0 -8px 20px rgba(0,0,0,0.1), 0 0 15px ${highlightColor}60` : ''}`,
+                        zIndex: isBlack ? 20 : 10,
+                        opacity: isHighlighted ? 1 : (isBlack ? 1 : 0.95)
+                      }}
+                    >
+
+                      {isLockedMatch && (
+                        <div className="absolute inset-x-1 bottom-1 h-1 rounded-full bg-white/40 animate-pulse" />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              {/* Floating tooltip only for keyboard hover (where there is no Recharts scrubber) */}
+              {hoveredHarm && hoverPct !== null && !isLocked && !activeSpectrum && (
+                <div
+                  className="pointer-events-none absolute z-50 rounded border bg-card px-3 py-2 shadow-xl"
+                  style={{ bottom: '100%', left: `${hoverPct}%`, transform: 'translateX(-50%)', borderColor: hoveredHarm.color, marginBottom: 6, whiteSpace: 'nowrap' }}
+                >
+                  <div className="font-mono-display text-[11px] font-extrabold" style={{ color: hoveredHarm.color }}>{hoveredHarm.note} {hoveredHarm.isFund ? 'Fundamental' : `H${hoveredHarm.degree}`}</div>
+                  <div className="font-mono-display text-sm font-bold text-foreground">{hoveredHarm.freq.toFixed(1)} Hz</div>
+                  <div className="font-mono-display text-xs text-muted-foreground">{getClosest12TET(hoveredHarm.freq).name} <span className="text-foreground">{getClosest12TET(hoveredHarm.freq).cents.toFixed(1)}¢</span></div>
+                </div>
               )}
             </div>
-            <div
-              ref={keyboardRef}
-              onMouseMove={handleKbMove}
-              onMouseLeave={() => { if (!isLocked) { setHoveredHarm(null); setActiveSpectrum(null); } }}
-              onClick={handleKbClick}
-              className="relative border border-black/20 h-8 md:h-12 lg:h-16 bg-[#D7C4B1] overflow-hidden"
-              style={{ cursor: isLocked ? 'default' : 'crosshair' }}
-            >
-              {Array.from({ length: 135 - 15 + 1 }).map((_, i) => {
-                const m = 15 + i;
-                const isBlack = [1, 3, 6, 8, 10].includes(m % 12);
-                const f = midiToFreq(m);
-                const nextF = midiToFreq(m + 1);
-                const left = getPct(f, 'log');
-                const right = getPct(nextF, 'log');
-                const hMatch = activeHarmonics.find(h => Math.round(freqToMidi(h.freq)) === m);
-                const isFund = hMatch?.isFund;
-                const isHighlighted = hMatch && (!highlightedPair || hMatch.id === highlightedPair.id1 || hMatch.id === highlightedPair.id2);
-                const isLockedMatch = isLocked && hoveredHarm?.id === hMatch?.id;
-                
-                // Colors from screenshot
-                const baseWhite = '#D7C4B1';
-                const baseBlack = '#1A1A1A';
-                const highlightColor = isLockedMatch ? COLOR_LOCKED : (hMatch?.color || '#FF9F43');
-                const noteName = NOTE_NAMES[m % 12];
-
-                return (
-                  <div 
-                    key={m} 
-                    className={`absolute top-0 flex flex-col items-center border-r border-black/20 transition-all duration-200 ${isBlack ? 'z-20 h-[62%]' : 'z-10 h-full'}`} 
-                    style={{ 
-                      left: `${left}%`, 
-                      width: `${right - left}%`,
-                      background: isHighlighted ? highlightColor : (isBlack ? baseBlack : baseWhite),
-                      borderRadius: isBlack ? '0 0 3px 3px' : '0 0 2px 2px',
-                      boxShadow: isBlack 
-                        ? `0 3px 6px rgba(0,0,0,0.4), inset 0 -1px 1px rgba(255,255,255,0.05)${isHighlighted ? `, 0 0 12px ${highlightColor}80` : ''}` 
-                        : `inset 0 -2px 4px rgba(0,0,0,0.05)${isHighlighted ? `, inset 0 -8px 20px rgba(0,0,0,0.1), 0 0 15px ${highlightColor}60` : ''}`,
-                      zIndex: isBlack ? 20 : 10,
-                      opacity: isHighlighted ? 1 : (isBlack ? 1 : 0.95)
-                    }}
-                  >
-
-                    {isLockedMatch && (
-                      <div className="absolute inset-x-1 bottom-1 h-1 rounded-full bg-white/40 animate-pulse" />
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-            {/* Floating tooltip only for keyboard hover (where there is no Recharts scrubber) */}
-            {hoveredHarm && hoverPct !== null && !isLocked && !activeSpectrum && (
-              <div
-                className="pointer-events-none absolute z-50 rounded border bg-card px-3 py-2 shadow-xl"
-                style={{ bottom: '100%', left: `${hoverPct}%`, transform: 'translateX(-50%)', borderColor: hoveredHarm.color, marginBottom: 6, whiteSpace: 'nowrap' }}
-              >
-                <div className="font-mono-display text-[11px] font-extrabold" style={{ color: hoveredHarm.color }}>{hoveredHarm.note} {hoveredHarm.isFund ? 'Fundamental' : `H${hoveredHarm.degree}`}</div>
-                <div className="font-mono-display text-sm font-bold text-foreground">{hoveredHarm.freq.toFixed(1)} Hz</div>
-                <div className="font-mono-display text-xs text-muted-foreground">{getClosest12TET(hoveredHarm.freq).name} <span className="text-foreground">{getClosest12TET(hoveredHarm.freq).cents.toFixed(1)}¢</span></div>
-              </div>
-            )}
-          </div>
           </div>
 
-          <PsychoChart title="III. Biological (Bark)" desc="Ear resolution — clashes occur when Δ < 1.0z." dataKey="bark" />
-          <PsychoChart title="IV. Psychological (Mel)" desc="Perceived pitch distance — bass feels 'wide'." dataKey="mel" />
+          <PsychoChart title="III. Biological (Bark)" desc=" Ear resolution; clashes occur when Δ < 1.0z. 
+The cochlea divides the audible range into overlapping critical bands — the Bark scale maps these — and within each band, sounds compete for the same hair cells. When two frequencies land within a single critical band (Δ < 1.0z), the ear cannot fully resolve them and perceives roughness or beating. The bands are not uniform across the spectrum: they are wider in the bass, which is why low-register clusters sound muddy even across large interval gaps. At high frequencies the bands narrow in absolute Hz terms but cover more semitones, meaning intervals that feel spacious and distinct in the midrange begin to blur and merge in the upper register — a cluster of high harmonics can become perceptually fused into a single bright texture rather than a set of discrete pitches." dataKey="bark" />
+          <PsychoChart title="IV. Psychological (Mel)" desc="Perceived pitch distance — bass feels 'wide'. Even after the cochlea processes sound, the brain further warps what we consciously hear. The Mel scale captures this perceptual stretching: equal steps in Mel feel equally spaced in pitch to the listener, yet the underlying frequency differences are vastly unequal. Low notes feel far apart even when their Hz difference is modest; high notes feel compressed even when the Hz gap is large. This is why a bass line feels spacious and grounded, and why a cluster of high harmonics can feel tight and bright. It's the final transformation from signal to sensation — the subjective experience of pitch distance that composers intuitively exploit." dataKey="mel" />
         </div>
 
         {/* Footer */}
