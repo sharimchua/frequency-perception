@@ -161,9 +161,9 @@ export default function Index() {
     const tet = getClosest12TET(hz);
     return (
       <div className="rounded border border-border bg-card px-3 py-2 shadow-xl" style={{ pointerEvents: 'none', zIndex: 1000 }}>
-        <div className="font-mono-display text-sm font-extrabold text-foreground">{hz.toFixed(1)} Hz</div>
-        <div className="font-mono-display text-xs text-muted-foreground">{bark.toFixed(2)}z | {mel.toFixed(0)}m</div>
-        <div className="mt-1 border-t border-border pt-1 font-mono-display text-xs text-muted-foreground">
+        <div className="font-mono-display text-sm md:text-base font-extrabold text-foreground">{hz.toFixed(1)} Hz</div>
+        <div className="font-mono-display text-xs md:text-sm text-muted-foreground">{bark.toFixed(2)}z | {mel.toFixed(0)}m</div>
+        <div className="mt-1 border-t border-border pt-1 font-mono-display text-xs md:text-sm text-muted-foreground">
           {tet.name} <span className={tet.cents > 0 ? 'text-emerald-400' : 'text-red-400'}>{tet.cents > 0 ? '+' : ''}{tet.cents.toFixed(1)}¢</span>
         </div>
       </div>
@@ -180,8 +180,8 @@ export default function Index() {
         </div>
         <div
           ref={chartRef}
-          className="relative border border-border bg-card"
-          style={{ height: 56, cursor: 'crosshair' }}
+          className="relative border border-border bg-card h-14 md:h-20 lg:h-24"
+          style={{ cursor: 'crosshair' }}
           onMouseMove={(e) => handleChartHover(dataKey, e, chartRef.current)}
           onMouseLeave={() => { setHoveredHarm(null); setActiveSpectrum(null); }}
         >
@@ -218,7 +218,7 @@ export default function Index() {
                   ? (h.id === highlightedPair.id1 || h.id === highlightedPair.id2)
                   : true;
                 return (
-                  <div key={`lbl-${h.id}`} className="font-mono-display absolute bottom-0 text-[9px] font-bold" style={{ left: `calc(${p}% * calc(100% - 16px) / 100%)`, transform: 'translateX(-50%)', color: h.color, opacity: isHighlighted ? 0.8 : 0.1 }}>H{h.degree}</div>
+                  <div key={`lbl-${h.id}`} className="font-mono-display absolute bottom-0 text-[9px] md:text-[10px] lg:text-[11px] font-bold" style={{ left: `calc(${p}% * calc(100% - 16px) / 100%)`, transform: 'translateX(-50%)', color: h.color, opacity: isHighlighted ? 0.8 : 0.1 }}>H{h.degree}</div>
                 );
               })}
             </div>
@@ -258,11 +258,11 @@ export default function Index() {
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="font-mono-display text-sm font-semibold">
-              <span className="text-note-a">{getNoteName(midiA)} ({freqA.toFixed(1)}Hz)</span>
-              <span className="mx-2 text-muted-foreground">→</span>
-              <span className="text-note-b">{getNoteName(midiB)} ({freqB.toFixed(1)}Hz)</span>
+          <div className="flex flex-col sm:flex-row items-end sm:items-center gap-1 sm:gap-4">
+            <div className="font-mono-display text-xs sm:text-sm font-semibold text-right sm:text-left leading-tight sm:leading-normal">
+              <span className="text-note-a block sm:inline">{getNoteName(midiA)} ({freqA.toFixed(1)}Hz)</span>
+              <span className="mx-1 sm:mx-2 text-muted-foreground hidden sm:inline">→</span>
+              <span className="text-note-b block sm:inline">{getNoteName(midiB)} ({freqB.toFixed(1)}Hz)</span>
             </div>
             <div className="hidden items-center gap-3 font-mono-display text-xs font-semibold uppercase lg:flex">
               <span className="text-muted-foreground">Δ</span>
@@ -282,27 +282,27 @@ export default function Index() {
           <div className="rounded border border-border bg-card p-3">
             <div className="mb-2 flex items-center gap-3">
               <div className="flex-1">
-                <label className="font-mono-display text-[10px] font-bold uppercase tracking-wider text-note-a">Note A</label>
+                <label className="font-mono-display text-[10px] md:text-xs font-bold uppercase tracking-wider text-note-a">Note A</label>
                 <input type="range" min="21" max="108" value={midiA} onChange={(e) => { const v = parseInt(e.target.value); if (v + stDiff <= 108) setMidiA(v); else setMidiA(108 - stDiff); }} className="fa-slider slider-a" />
               </div>
               <div className="flex-1">
-                <label className="font-mono-display text-[10px] font-bold uppercase tracking-wider text-note-b">Note B</label>
+                <label className="font-mono-display text-[10px] md:text-xs font-bold uppercase tracking-wider text-note-b">Note B</label>
                 <input type="range" min="21" max="108" value={midiB} onChange={(e) => setStDiff(Math.max(0, parseInt(e.target.value) - midiA))} className="fa-slider slider-b" />
               </div>
               <button
                 onClick={() => setShowOvertones(!showOvertones)}
                 title={showOvertones ? "Hide Overtones" : "Show Overtones"}
-                className={`flex h-8 w-8 items-center justify-center rounded border border-border transition-colors ${showOvertones ? 'bg-primary text-primary-foreground' : 'bg-transparent text-foreground'}`}
+                className={`flex h-8 w-8 items-center justify-center rounded border border-border transition-colors md:h-9 md:w-9 ${showOvertones ? 'bg-primary text-primary-foreground' : 'bg-transparent text-foreground'}`}
               >
                 <Layers size={15} />
               </button>
             </div>
-            <div className="flex flex-wrap gap-1">
+            <div className="flex flex-wrap gap-1 md:gap-1.5">
               {INTERVALS.map(iv => (
                 <button
                   key={iv.name}
                   onClick={() => setStDiff(iv.semi)}
-                  className={`font-mono-display min-w-[28px] flex-1 rounded-sm border border-border px-1.5 py-1 text-[11px] font-semibold transition-colors ${stDiff === iv.semi ? 'bg-foreground text-background' : 'bg-background text-muted-foreground hover:bg-muted'}`}
+                  className={`font-mono-display min-w-[28px] flex-1 rounded-sm border border-border px-1.5 py-1 text-[11px] md:text-xs font-semibold transition-colors ${stDiff === iv.semi ? 'bg-foreground text-background' : 'bg-background text-muted-foreground hover:bg-muted'}`}
                 >
                   {iv.name}
                 </button>
@@ -315,7 +315,7 @@ export default function Index() {
             <div className="mb-1.5 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <AlertTriangle size={13} className="text-gold" />
-                <span className="font-mono-display text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground">Interference Engine</span>
+                <span className="font-mono-display text-[11px] md:text-xs font-extrabold uppercase tracking-wider text-muted-foreground">Interference Engine</span>
               </div>
               {highlightedPair && (
                 <button onClick={() => setHighlightedPair(null)} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
@@ -323,7 +323,7 @@ export default function Index() {
                 </button>
               )}
             </div>
-            <div className="scrollbar-hide flex max-h-16 flex-wrap gap-1.5 overflow-y-auto">
+            <div className="scrollbar-hide flex max-h-16 md:max-h-32 flex-wrap gap-1.5 overflow-y-auto w-full">
               {interferences.length === 0 ? (
                 <div className="text-xs italic text-muted-foreground opacity-50">Timbres perfectly resolved.</div>
               ) : (
@@ -333,7 +333,7 @@ export default function Index() {
                     <div
                       key={i}
                       onClick={() => toggleHighlight(c.h1, c.h2)}
-                      className={`interference-pill flex items-center gap-1.5 rounded-full border border-border bg-background px-2.5 py-1 font-mono-display text-[11px] ${isActive ? 'active' : ''}`}
+                      className={`interference-pill flex items-center gap-1.5 rounded-full border border-border bg-background px-2.5 py-1 font-mono-display text-[11px] md:text-xs ${isActive ? 'active' : ''}`}
                     >
                       <span className="font-extrabold" style={{ color: c.h1.color }}>{c.h1.note}{c.h1.degree}</span>
                       <span className="text-muted-foreground">+</span>
@@ -353,16 +353,16 @@ export default function Index() {
           <div className="min-w-0">
             {hoveredHarm && harmonicFacts.length > 0 ? (
               <>
-                <span className="font-mono-display text-[11px] font-bold uppercase tracking-wider text-primary">
+                <span className="font-mono-display text-[11px] md:text-xs font-bold uppercase tracking-wider text-primary">
                   {hoveredHarm.note === 'A' ? getNoteName(midiA) : getNoteName(midiB)} — H{hoveredHarm.degree} ({hoveredHarm.freq.toFixed(1)} Hz)
                   {activeSpectrum && <span className="ml-2 text-muted-foreground">on {activeSpectrum.toUpperCase()} scale</span>}
                 </span>
-                <p className="mt-0.5 text-sm leading-snug text-foreground/80">{harmonicFacts[harmonicFactIdx % harmonicFacts.length]?.text}</p>
+                <p className="mt-0.5 text-sm md:text-base leading-snug text-foreground/80">{harmonicFacts[harmonicFactIdx % harmonicFacts.length]?.text}</p>
               </>
             ) : (
               <>
-                <span className="font-mono-display text-[11px] font-bold uppercase tracking-wider text-primary">{currentIntervalName}</span>
-                <p className="mt-0.5 text-sm leading-snug text-foreground/80">{currentFact}</p>
+                <span className="font-mono-display text-[11px] md:text-xs font-bold uppercase tracking-wider text-primary">{currentIntervalName}</span>
+                <p className="mt-0.5 text-sm md:text-base leading-snug text-foreground/80">{currentFact}</p>
               </>
             )}
           </div>
@@ -375,7 +375,7 @@ export default function Index() {
 
           {/* Keyboard */}
           <div className="relative mb-1.5 rounded border border-border bg-card p-2">
-            <div className="relative mb-0.5 h-3">
+            <div className="relative mb-0.5 h-3 md:h-4 lg:h-5">
               {activeHarmonics.map((h, i) => {
                 const isHighlighted = highlightedPair
                   ? (h.id === highlightedPair.id1 || h.id === highlightedPair.id2)
@@ -387,7 +387,7 @@ export default function Index() {
                     style={{
                       left: `${getPct(h.freq, 'log')}%`,
                       width: h.isFund ? 3 : 2,
-                      height: h.isFund ? 12 : 6,
+                      height: h.isFund ? '100%' : '50%',
                       background: h.color,
                       transform: 'translateX(-50%)',
                       opacity: isHighlighted ? 1 : 0.1
@@ -400,8 +400,8 @@ export default function Index() {
               ref={keyboardRef}
               onMouseMove={handleKbMove}
               onMouseLeave={() => { setHoveredHarm(null); setActiveSpectrum(null); }}
-              className="relative flex overflow-hidden border border-border"
-              style={{ height: 28, cursor: 'crosshair' }}
+              className="relative flex overflow-hidden border border-border h-8 md:h-12 lg:h-16"
+              style={{ cursor: 'crosshair' }}
             >
               {Array.from({ length: 72 }).map((_, i) => {
                 const m = 36 + i;
