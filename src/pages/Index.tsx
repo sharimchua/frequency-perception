@@ -243,7 +243,7 @@ export default function Index() {
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .interference-pill { transition: all 0.15s ease; cursor: pointer; }
         .interference-pill:hover { filter: brightness(1.3); transform: translateY(-1px); }
-        .interference-pill.active { outline: 2px solid hsl(33,90%,55%); outline-offset: 1px; }
+        .interference-pill.active { box-shadow: inset 0 0 0 2px hsl(33,90%,55%); }
       `}</style>
 
       {/* Sticky Header */}
@@ -335,7 +335,7 @@ export default function Index() {
                 </button>
               )}
             </div>
-            <div className="scrollbar-hide flex max-h-16 md:max-h-32 flex-wrap gap-1.5 overflow-y-auto w-full">
+            <div className="scrollbar-hide flex max-h-16 md:max-h-32 flex-wrap gap-1.5 overflow-y-auto w-full p-1 -m-1">
               {interferences.length === 0 ? (
                 <div className="text-xs italic text-muted-foreground opacity-50">Timbres perfectly resolved.</div>
               ) : (
