@@ -477,7 +477,11 @@ export default function Index() {
             </div>
 
             <div className="mt-1 text-center text-xs text-muted-foreground/80 font-mono flex items-center justify-center gap-3">
-              <span>{tuning.tones[intervalDegree % tuning.tones.length]?.name} ({intervalDegree} steps)</span>
+              <span>
+                {intervalDegree > 0 && intervalDegree % tuning.tones.length === 0 
+                  ? (intervalDegree === tuning.tones.length ? 'Octave' : `${intervalDegree / tuning.tones.length} Octaves`)
+                  : tuning.tones[intervalDegree % tuning.tones.length]?.name} ({intervalDegree} steps)
+              </span>
               {tuning.tones[intervalDegree % tuning.tones.length]?.ratioStr && (
                 <><span className="text-border">|</span><span>Pure Ratio: {tuning.tones[intervalDegree % tuning.tones.length].ratioStr}</span></>
               )}
