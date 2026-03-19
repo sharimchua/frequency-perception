@@ -2,7 +2,7 @@ import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react'
 import { LineChart, XAxis, YAxis, CartesianGrid, ResponsiveContainer, ReferenceLine, Line } from 'recharts';
 import { Waves, AlertTriangle, X, Lightbulb, ExternalLink, ChevronLeft, ChevronRight } from 'lucide-react';
 import {
-  MIN_F, MAX_F, HARMONIC_COUNT, INTERVALS, INTERVAL_FACTS, 
+  MIN_F, MAX_F, HARMONIC_COUNT, INTERVALS, INTERVAL_FACTS,
   midiToFreq, freqToMidi, toBark, toMel, getNoteName, getClosest12TET, getVal, getPct,
   getHarmonicFacts, getContextualFacts, getInterferenceFacts, getCulturalFacts, TUNING_SYSTEMS, generateTuningFrequencies,
   type Harmonic, type Interference, type TuningSystem
@@ -19,10 +19,10 @@ const COLOR_LOCKED = 'hsl(142, 70%, 55%)';
 export default function Index() {
   const [tuningId, setTuningId] = useState<string>('12tet');
   const tuning = useMemo(() => TUNING_SYSTEMS[tuningId] || TUNING_SYSTEMS['12tet'], [tuningId]);
-  
+
   // Anchor on standard C4 = 261.625565 Hz
   const gridFreqs = useMemo(() => generateTuningFrequencies(tuning, 261.625565), [tuning]);
-  
+
   const defaultRootIndex = useMemo(() => {
     let best = 0; let minDist = Infinity;
     gridFreqs.forEach((g, i) => { const dist = Math.abs(g.freq - 440); if (dist < minDist) { minDist = dist; best = i; } });
@@ -51,7 +51,7 @@ export default function Index() {
   const freqY = useMemo(() => gridFreqs[targetIndex]?.freq || 440, [gridFreqs, targetIndex, intervalDegree]);
 
   const centsDiff = useMemo(() => 1200 * Math.log2(freqY / freqX), [freqX, freqY]);
-  const stDiff = Math.round(centsDiff / 100); 
+  const stDiff = Math.round(centsDiff / 100);
   const midiX = useMemo(() => freqToMidi(freqX), [freqX]);
   const midiY = useMemo(() => freqToMidi(freqY), [freqY]);
 
@@ -164,7 +164,7 @@ export default function Index() {
     const minV = getVal(MIN_F, dataKey);
     const maxV = getVal(MAX_F, dataKey);
     const val = frac * (maxV - minV) + minV;
-    
+
     let hz: number;
     if (dataKey === 'hz') hz = val;
     else if (dataKey === 'log') hz = Math.pow(2, val);
@@ -270,7 +270,7 @@ export default function Index() {
               >
                 <X size={12} strokeWidth={3} className="group-hover:rotate-90 transition-transform" />
                 <span className="opacity-90">
-                  {hoveredHarm 
+                  {hoveredHarm
                     ? `Locked: ${hoveredHarm.freq.toFixed(1)}Hz (${getNoteName(freqToMidi(hoveredHarm.freq))})`
                     : highlightedPair
                       ? `Locked: ${highlightedPair.id1} × ${highlightedPair.id2}`
@@ -278,7 +278,7 @@ export default function Index() {
                 </span>
               </button>
             )}
-            
+
             {(isLocked) && <div className="h-4 w-[1px] bg-border/40 hidden sm:block"></div>}
 
             <div className="font-mono-display text-xs sm:text-sm font-black text-right sm:text-left leading-tight tracking-tight my-auto">
@@ -288,9 +288,9 @@ export default function Index() {
                 {freqY.toFixed(1)}Hz <span className="text-muted-foreground font-normal opacity-50 ml-1 tracking-normal">({tuning.layout === '12-tone' ? getNoteName(Math.round(midiY)) : `Step ${gridFreqs[targetIndex]?.degree}`})</span>
               </span>
             </div>
-            
+
             <div className="h-4 w-[1px] bg-border/50 hidden sm:block"></div>
-            
+
             <button
               onClick={() => setShowOvertones(!showOvertones)}
               title={showOvertones ? "Hide Overtones" : "Show Overtones"}
@@ -303,11 +303,11 @@ export default function Index() {
       </header>
 
       <div className="mx-auto max-w-5xl px-4 py-4">
-        <PsychoChart 
-          title="I. Physical (Hz)" 
+        <PsychoChart
+          title="I. Physical (Hz)"
           shortDesc="Absolute air vibration; spacing expands exponentially."
           longDesc="This is the raw mechanical reality of sound: molecules being pushed and pulled through air at specific rates. The exponential spacing you see here mirrors how instruments actually behave in the physical world. The length of a vibrating string — or the volume of air inside a bell — does not scale linearly with the pitch we hear. To double a string's pitch, you halve its length. Each octave packs double the frequency range of the one below it. A grand piano stretches from 27 Hz to 4,186 Hz, yet no octave 'feels' wider than any other. This layer reveals the raw disproportion between physical cause and perceived effect."
-          dataKey="hz" 
+          dataKey="hz"
           activeHarmonics={activeHarmonics}
           harmonicsX={harmonicsX}
           harmonicsY={harmonicsY}
@@ -322,11 +322,11 @@ export default function Index() {
           handleChartHover={handleChartHover}
           handleChartClick={handleChartClick}
         />
-        <PsychoChart 
-          title="II. Theoretical (Log)" 
+        <PsychoChart
+          title="II. Theoretical (Log)"
           shortDesc="Music theory view; intervals are spatially fixed."
           longDesc="Compress the exponential Hz axis logarithmically and something remarkable happens: the intervals lock into a consistent geometry. Every octave becomes the same width, every perfect fifth the same span. This is the layer music theory lives in — the one that makes notation, scales, and harmony feel stable and predictable regardless of register. It's the mathematical translation between physical reality and musical thought, the grid that makes composition possible."
-          dataKey="log" 
+          dataKey="log"
           activeHarmonics={activeHarmonics}
           harmonicsX={harmonicsX}
           harmonicsY={harmonicsY}
@@ -354,7 +354,7 @@ export default function Index() {
             </p>
           </div>
 
-          <div 
+          <div
             className="mb-2 rounded-xl border border-border/60 bg-card/30 p-3 pt-2 shadow-inner"
             onMouseEnter={() => setActiveSpectrum('cultural')}
             onMouseLeave={() => { if (!isLocked) setActiveSpectrum(null); }}
@@ -362,9 +362,9 @@ export default function Index() {
             <div className="mb-2 flex flex-col sm:flex-row items-center justify-between gap-2">
               <span className="font-mono-display text-[10px] md:text-xs font-black uppercase tracking-[0.4em] text-muted-foreground/40">Tuning Grid</span>
               <div className="flex flex-wrap items-center justify-center gap-3">
-                <select 
+                <select
                   className="bg-card border border-border text-xs rounded px-2 py-1.5 font-mono shadow-sm"
-                  value={tuningId} 
+                  value={tuningId}
                   onChange={(e) => setTuningId(e.target.value)}
                   title="Select Cultural Tuning System"
                 >
@@ -463,7 +463,7 @@ export default function Index() {
                         className="absolute top-1/2 flex items-center justify-center rounded-full border border-black/40 transition-all duration-200"
                         style={{
                           left: `${left}%`,
-                          width: isHighlighted ? '14px' : '8px', 
+                          width: isHighlighted ? '14px' : '8px',
                           height: isHighlighted ? '14px' : '8px',
                           transform: 'translate(-50%, -50%)',
                           background: isHighlighted ? highlightColor : baseColor,
@@ -478,7 +478,7 @@ export default function Index() {
 
             <div className="mt-1 text-center text-xs text-muted-foreground/80 font-mono flex items-center justify-center gap-3">
               <span>
-                {intervalDegree > 0 && intervalDegree % tuning.tones.length === 0 
+                {intervalDegree > 0 && intervalDegree % tuning.tones.length === 0
                   ? (intervalDegree === tuning.tones.length ? 'Octave' : `${intervalDegree / tuning.tones.length} Octaves`)
                   : tuning.tones[intervalDegree % tuning.tones.length]?.name} ({intervalDegree} steps)
               </span>
@@ -515,11 +515,11 @@ export default function Index() {
           </div>
         </div>
 
-        <PsychoChart 
-          title="IV. Biological (Bark)" 
+        <PsychoChart
+          title="IV. Biological (Bark)"
           shortDesc="Ear resolution; clashes occur when Δ < 1.0z."
-          longDesc="The cochlea divides the audible range into overlapping critical bands — the Bark scale maps these — and within each band, sounds compete for the same hair cells. When two frequencies land within a single critical band (Δ < 1.0z), the ear cannot fully resolve them and perceives roughness or beating."
-          dataKey="bark" 
+          longDesc="The cochlea divides the audible range into overlapping critical bands — the Bark scale maps these — and within each band, sounds compete for the same hair cells. When two frequencies land within a single critical band (Δ < 1.0z), the ear cannot fully resolve them and perceives roughness or beating. The bands are not uniform across the spectrum: they are wider in the bass, which is why low-register clusters sound muddy even across large interval gaps. At high frequencies the bands narrow in absolute Hz terms but cover more semitones, meaning intervals that feel spacious and distinct in the midrange begin to blur and merge in the upper register — a cluster of high harmonics can become perceptually fused into a single bright texture rather than a set of discrete pitches."
+          dataKey="bark"
           activeHarmonics={activeHarmonics}
           harmonicsX={harmonicsX}
           harmonicsY={harmonicsY}
@@ -564,11 +564,11 @@ export default function Index() {
           </div>
         </div>
 
-        <PsychoChart 
-          title="V. Psychological (Mel)" 
+        <PsychoChart
+          title="V. Psychological (Mel)"
           shortDesc="Perceived pitch distance — bass feels 'wide'."
-          longDesc="Even after the cochlea processes sound, the brain further warps what we consciously hear. The Mel scale captures this perceptual stretching: equal steps in Mel feel equally spaced in pitch to the listener, yet the underlying frequency differences are vastly unequal."
-          dataKey="mel" 
+          longDesc="Even after the cochlea processes sound, the brain further warps what we consciously hear. The Mel scale captures this perceptual stretching: equal steps in Mel feel equally spaced in pitch to the listener, yet the underlying frequency differences are vastly unequal. Low notes feel far apart even when their Hz difference is modest; high notes feel compressed even when the Hz gap is large. This is why a bass line feels spacious and grounded, and why a cluster of high harmonics can feel tight and bright. It's the final transformation from signal to sensation — the subjective experience of pitch distance that composers intuitively exploit."
+          dataKey="mel"
           activeHarmonics={activeHarmonics}
           harmonicsX={harmonicsX}
           harmonicsY={harmonicsY}
@@ -617,7 +617,7 @@ interface PsychoChartProps {
   handleChartClick: (key: SpectrumKey, e: any, container: HTMLDivElement | null) => void;
 }
 
-const PsychoChart = ({ 
+const PsychoChart = ({
   title, shortDesc, longDesc, dataKey,
   activeHarmonics, harmonicsX, harmonicsY, stDiff, midiX, midiY,
   hoveredHarm, highlightedPair, isLocked, chartData,
@@ -655,10 +655,10 @@ const PsychoChart = ({
     const hits = [];
     const rawIv = INTERVAL_FACTS[stDiff] || INTERVAL_FACTS[0];
     hits.push(...rawIv.filter(f => f.spectrum === dataKey));
-    
+
     const ctx = getContextualFacts(harmonicsX, harmonicsY, stDiff, dataKey);
     hits.push(...ctx.filter(f => f.spectrum === dataKey));
-    
+
     if (hoveredHarm) {
       const noteName = hoveredHarm.note === 'X' ? getNoteName(midiX) : getNoteName(midiY);
       hits.push(...getHarmonicFacts(hoveredHarm.degree, hoveredHarm.freq, noteName).filter(f => f.spectrum === dataKey));
@@ -669,7 +669,7 @@ const PsychoChart = ({
   useEffect(() => setFactIdx(0), [stDiff, hoveredHarm]);
 
   return (
-    <div 
+    <div
       className="relative mb-4 last:mb-0 transition-all duration-300 hover:z-20 group border-b border-border/20 pb-4 last:border-0 pt-4"
       onMouseEnter={() => setActiveSpectrum(dataKey)}
       onMouseLeave={localHandleMouseLeave}
@@ -684,13 +684,13 @@ const PsychoChart = ({
             <p className="mt-1.5 text-[11px] text-muted-foreground/85 leading-relaxed max-w-none">{longDesc}</p>
           </div>
           <div className="relative h-24 md:h-28 w-full rounded-xl border border-border/60 bg-card/40 p-1.5 shadow-inner transition-colors hover:border-primary/40" ref={containerRef}>
-            <div className="absolute inset-0 z-20 cursor-crosshair" 
+            <div className="absolute inset-0 z-20 cursor-crosshair"
               onMouseMove={localHandleHover}
               onClick={(e) => handleChartClick(dataKey, e as any, containerRef.current)}
               onMouseLeave={localHandleMouseLeave}
             />
             {scrubPct !== null && scrubHz !== null && !isLocked && (
-              <div 
+              <div
                 className="pointer-events-none absolute top-0 bottom-0 z-30 border-l border-dashed border-primary/40"
                 style={{ left: `${scrubPct}%` }}
               >
@@ -729,7 +729,7 @@ const PsychoChart = ({
                 })}
               </LineChart>
             </ResponsiveContainer>
-            
+
             {/* Mel Warping Visualization */}
             {dataKey === 'mel' && (
               <div className="absolute inset-y-0 left-[14px] right-[14px] pointer-events-none z-0 overflow-visible">
@@ -742,11 +742,11 @@ const PsychoChart = ({
                     const isLockedMatch = isLocked && isHovered;
                     const opacity = isHighlighted ? (isHovered ? 0.6 : 0.25) : 0.05;
                     const isNoteY = h.note === 'Y';
-                    
+
                     // Sinusoidal cubic bezier curve
                     const edgeY = isNoteY ? 10 : 90; // Stop slightly before the absolute edge to align cleanly with the circular labels
                     const ctrlY = isNoteY ? 30 : 70;
-                    
+
                     return (
                       <path
                         key={`warp-${h.id}`}
