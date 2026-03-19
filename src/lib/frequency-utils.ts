@@ -753,3 +753,81 @@ export const getContextualFacts = (
 
   return facts;
 };
+
+// ──────────────────────────────────────────────────
+// AMBIENT FACTS (always available, register-aware)
+// Facts based on the current frequencies and spectrum
+// even when nothing is hovered or locked
+// ──────────────────────────────────────────────────
+export const getAmbientFacts = (
+  freqX: number, freqY: number, stDiff: number, spectrum: string
+): HarmonicFact[] => {
+  const facts: HarmonicFact[] = [];
+  const avgFreq = (freqX + freqY) / 2;
+  const ratio = freqY / freqX;
+
+  // Register-specific observations
+  if (spectrum === 'hz') {
+    if (avgFreq < 100) {
+      facts.push({ text: `You're exploring the sub-bass register (< 100 Hz). Down here, sound is felt as much as heard — bass frequencies vibrate your chest cavity and can even affect heart rhythm at high amplitudes.`, spectrum: 'hz' });
+      facts.push({ text: `At these low frequencies, the wavelength of sound is enormous — ${(343 / avgFreq).toFixed(1)} metres. This is why bass notes 'wrap around' obstacles and fill rooms, while treble is directional.`, spectrum: 'hz' });
+    } else if (avgFreq < 300) {
+      facts.push({ text: `The ${avgFreq.toFixed(0)} Hz range is where most male voices and cello fundamentals sit. Audio engineers call this the 'warmth' zone — boosting it makes recordings feel intimate.`, spectrum: 'hz' });
+    } else if (avgFreq < 1000) {
+      facts.push({ text: `Around ${avgFreq.toFixed(0)} Hz, most acoustic instruments have their fundamental energy. This is the 'body' of sound — cutting these frequencies makes any instrument sound thin.`, spectrum: 'hz' });
+    } else if (avgFreq < 4000) {
+      facts.push({ text: `The ${avgFreq.toFixed(0)} Hz region is where human hearing is most sensitive, thanks to the resonant frequency of the ear canal (~2.5 kHz). Sounds here appear louder than they actually are.`, spectrum: 'hz' });
+    } else {
+      facts.push({ text: `Above 4 kHz, you're in the 'presence' and 'air' bands. These frequencies add sparkle and definition but contribute almost nothing to perceived pitch — they're pure texture.`, spectrum: 'hz' });
+    }
+  }
+
+  if (spectrum === 'log') {
+    const octaveX = Math.log2(freqX / 440);
+    const octaveY = Math.log2(freqY / 440);
+    if (stDiff === 0) {
+      facts.push({ text: `At unison, the log-scale position is ${Math.log2(freqX).toFixed(2)} octaves above 1 Hz. On this axis, every equal visual distance represents the same musical interval — a property no other scale has.`, spectrum: 'log' });
+    }
+    if (Math.abs(octaveX) < 0.5) {
+      facts.push({ text: `Note X is near A4 (440 Hz) — the international standard pitch since 1955. Before standardisation, orchestras in different cities could be nearly a semitone apart, making touring musicians' lives difficult.`, spectrum: 'log' });
+    }
+    const centsFromET = Math.abs(1200 * Math.log2(ratio) - stDiff * 100);
+    if (stDiff > 0 && centsFromET > 0.5) {
+      facts.push({ text: `The actual frequency ratio (${ratio.toFixed(4)}) deviates from the equal-tempered ideal by ${centsFromET.toFixed(1)} cents. In 12-TET, this deviation is always zero by design — but in other tuning systems, it reveals the 'character' of each key.`, spectrum: 'log' });
+    }
+  }
+
+  if (spectrum === 'bark') {
+    const barkX = toBark(freqX);
+    const barkY = toBark(freqY);
+    const barkMid = (barkX + barkY) / 2;
+    if (barkMid < 4) {
+      facts.push({ text: `At ${barkMid.toFixed(1)} Bark, you're in the wide-band bass region. Critical bands here span 100+ Hz — your ear is essentially 'low-resolution' in the bass, which is why bass chords sound muddy with close voicings.`, spectrum: 'bark' });
+    } else if (barkMid < 12) {
+      facts.push({ text: `At ${barkMid.toFixed(1)} Bark, you're in the peak-resolution zone. Critical bands here are narrow (~100 Hz), giving your ear maximum ability to distinguish separate pitches. This is the sweet spot for harmony.`, spectrum: 'bark' });
+    } else {
+      facts.push({ text: `At ${barkMid.toFixed(1)} Bark, critical bands are widening again. Your cochlea is running out of physical space to separate frequencies — this is why very high harmonics merge into 'brightness' rather than distinct notes.`, spectrum: 'bark' });
+    }
+    facts.push({ text: `The Bark scale has ~24 bands total, named after Heinrich Barkhausen (1881-1956). Each band corresponds to a roughly 1.3mm section of the basilar membrane in your inner ear — the entire membrane is only about 35mm long.`, spectrum: 'bark' });
+  }
+
+  if (spectrum === 'mel') {
+    const melX = toMel(freqX);
+    const melY = toMel(freqY);
+    const melMid = (melX + melY) / 2;
+    if (melMid < 500) {
+      facts.push({ text: `At ${melMid.toFixed(0)} mel, pitch perception is nearly linear — a 100 Hz increase 'sounds like' roughly 100 mel. Below 1000 Hz, your brain maps frequency to pitch almost 1:1.`, spectrum: 'mel' });
+    } else if (melMid < 1500) {
+      facts.push({ text: `At ${melMid.toFixed(0)} mel, you're in the transition zone where pitch perception starts to compress. From here upward, each doubling of frequency adds progressively fewer mel — the logarithmic nature of hearing takes over.`, spectrum: 'mel' });
+    } else {
+      facts.push({ text: `At ${melMid.toFixed(0)} mel, pitch perception is strongly compressed. Large Hz differences feel like small pitch changes. This is why melodies above ~2 kHz sound 'squeezed' and lose their intervallic clarity.`, spectrum: 'mel' });
+    }
+    if (stDiff > 0) {
+      const melGap = Math.abs(melX - melY);
+      const octaveMels = toMel(freqX * 2) - melX;
+      facts.push({ text: `This interval spans ${melGap.toFixed(0)} mel — about ${(melGap / octaveMels * 100).toFixed(0)}% of a perceived octave at this register. The Mel scale was created in 1937 by Stevens, Volkmann & Newman to quantify exactly this kind of perceptual measurement.`, spectrum: 'mel' });
+    }
+  }
+
+  return facts;
+};
