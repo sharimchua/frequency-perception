@@ -537,6 +537,8 @@ export default function Index() {
           setActiveSpectrum={setActiveSpectrum}
           handleChartHover={handleChartHover}
           handleChartClick={handleChartClick}
+          freqX={freqX}
+          freqY={freqY}
         />
 
         {/* Dissonance Detector */}
