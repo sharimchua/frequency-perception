@@ -588,6 +588,8 @@ export default function Index() {
           setActiveSpectrum={setActiveSpectrum}
           handleChartHover={handleChartHover}
           handleChartClick={handleChartClick}
+          freqX={freqX}
+          freqY={freqY}
         />
 
         <footer className="mt-6 flex items-center justify-center gap-6 border-t border-border/40 pt-4">
