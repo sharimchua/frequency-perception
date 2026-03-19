@@ -260,67 +260,105 @@ export const INTERVAL_FACTS: Record<number, HarmonicFact[]> = {
   0: [
     { text: "Unison — two identical frequencies create constructive interference, doubling amplitude. This is why choirs and orchestral sections sound so powerful.", spectrum: 'hz' },
     { text: "When two instruments play in unison, tiny tuning differences create a shimmering 'chorus' effect — this beating is actually the sum and difference of their frequencies.", spectrum: 'bark' },
-    { text: "The human ear can detect pitch differences as small as 3–5 cents. In unison, even these micro-deviations create perceivable texture.", spectrum: 'mel' }
+    { text: "The human ear can detect pitch differences as small as 3–5 cents. In unison, even these micro-deviations create perceivable texture.", spectrum: 'mel' },
+    { text: "On the log scale, unison means zero interval distance. Every harmonic of one source lands exactly on a harmonic of the other — the overtone series are perfectly superimposed.", spectrum: 'log' },
+    { text: "In physical Hz terms, unison means the air pressure wave patterns are identical. When perfectly in phase, they sum to double the pressure amplitude — a 6 dB increase.", spectrum: 'hz' },
+    { text: "On the Bark scale, unison means zero critical-band separation. Your cochlea literally cannot distinguish the two sources — it perceives one louder sound.", spectrum: 'bark' },
+    { text: "Perceptually, unison at 0 mel separation means your brain fuses both sources into a single auditory 'object'. Spatial cues (stereo panning) are the only way to tell them apart.", spectrum: 'mel' }
   ],
   1: [
     { text: "The minor 2nd (ratio ~16:15) is the most dissonant interval — the frequencies are close enough to trigger 'roughness' on the basilar membrane of your inner ear.", spectrum: 'bark' },
     { text: "In horror film scores, the minor 2nd is used extensively because its beating frequency falls in the 20–30 Hz range, triggering anxiety responses.", spectrum: 'mel' },
-    { text: "The semitone is the smallest interval in Western music, but in Arabic maqam, quarter-tones split it further — our 12-TET system is actually a compromise.", spectrum: 'cultural' }
+    { text: "The semitone is the smallest interval in Western music, but in Arabic maqam, quarter-tones split it further — our 12-TET system is actually a compromise.", spectrum: 'cultural' },
+    { text: "A semitone spans exactly 100 cents on the log scale — the smallest equal-tempered step. Yet this 'small' step creates the strongest sense of melodic tension and resolution in Western music.", spectrum: 'log' },
+    { text: "The Hz difference of a semitone varies wildly by register: ~1.5 Hz at the bottom of the piano but ~470 Hz at the top. Same interval, vastly different physics.", spectrum: 'hz' },
+    { text: "At a semitone apart, the fundamentals share a critical band across most of the audible range. This is the biological definition of maximum dissonance — the hair cells simply cannot separate them.", spectrum: 'bark' },
+    { text: "The Mel scale shows a semitone as a relatively large perceptual step in the bass but a tiny one in the treble. This is why low-register semitones sound 'crunchy' while high ones sound 'tight'.", spectrum: 'mel' }
   ],
   2: [
     { text: "The major 2nd (ratio 9:8) is the interval of a whole step — the building block of major scales. Its Bark distance is about 1.5z, right at the edge of roughness.", spectrum: 'bark' },
     { text: "When you sing 'Happy Birthday', the first two notes are a major 2nd apart. It's one of the most natural intervals for the human voice.", spectrum: 'mel' },
-    { text: "Two notes a whole tone apart create a beat frequency that's audible as a distinct wobble — this is how piano tuners verify their work.", spectrum: 'hz' }
+    { text: "Two notes a whole tone apart create a beat frequency that's audible as a distinct wobble — this is how piano tuners verify their work.", spectrum: 'hz' },
+    { text: "On the log scale, a whole tone = 200 cents. The whole-tone scale (C-D-E-F#-G#-A#) divides the octave into 6 equal steps, creating the 'dreamlike' sound Debussy made famous.", spectrum: 'log' },
+    { text: "In Hz, a whole tone above A4 (440 Hz) is B4 (493.88 Hz) — a 53.88 Hz gap. But a whole tone above A2 (110 Hz) is B2 (123.47 Hz) — only 13.47 Hz. Same interval, 4× less physical energy.", spectrum: 'hz' },
+    { text: "Perceptually, the major 2nd spans about 60–100 mel depending on register. Your brain treats it as 'one step' regardless — evidence that pitch perception is fundamentally logarithmic, not linear.", spectrum: 'mel' }
   ],
   3: [
     { text: "The minor 3rd (ratio 6:5) is the interval of sadness in Western music — but in many cultures it carries no emotional connotation at all.", spectrum: 'cultural' },
     { text: "Biologically, the minor 3rd falls in a 'sweet spot' on the Bark scale where our ears can distinguish both notes clearly while still perceiving their harmonic relationship.", spectrum: 'bark' },
-    { text: "The opening of Beethoven's 5th Symphony — 'da-da-da-DUM' — spans a minor 3rd. It's one of the most recognised intervals in music history.", spectrum: 'log' }
+    { text: "The opening of Beethoven's 5th Symphony — 'da-da-da-DUM' — spans a minor 3rd. It's one of the most recognised intervals in music history.", spectrum: 'log' },
+    { text: "On the Hz axis, a minor 3rd's beat frequency is fast enough (30–80 Hz in the mid-range) to be perceived as a distinct 'buzzing' texture rather than individual pulses.", spectrum: 'hz' },
+    { text: "The minor 3rd spans about 3 semitones on the log scale. In equal temperament it's 300 cents — 16 cents wider than the 'pure' 6:5 ratio (315.64 cents). Most ears don't notice.", spectrum: 'log' },
+    { text: "On the Mel scale, the minor 3rd covers enough perceptual distance that your brain assigns each note a distinct 'pitch identity' — unlike the semitone where they blur.", spectrum: 'mel' }
   ],
   4: [
     { text: "The major 3rd (ratio 5:4) is the interval of joy. In just intonation it's perfectly consonant; in equal temperament it's 14 cents sharp — the biggest compromise in 12-TET.", spectrum: 'cultural' },
     { text: "Barbershop quartets tune their major 3rds to the pure 5:4 ratio, creating audible 'combination tones' that sound like a phantom fifth voice.", spectrum: 'hz' },
-    { text: "Your brain processes major 3rds differently from minor 3rds — fMRI studies show distinct activation patterns in the auditory cortex for each.", spectrum: 'mel' }
+    { text: "Your brain processes major 3rds differently from minor 3rds — fMRI studies show distinct activation patterns in the auditory cortex for each.", spectrum: 'mel' },
+    { text: "On the log scale, the equal-tempered major 3rd (400 cents) is the most 'out of tune' interval in 12-TET compared to its just-intonation ideal (386 cents). This 14-cent error shaped centuries of tuning debate.", spectrum: 'log' },
+    { text: "On the Bark scale, a major 3rd puts the fundamentals clearly in separate critical bands for most registers. This clean separation is what makes the interval sound 'bright' and 'open'.", spectrum: 'bark' },
+    { text: "The Hz gap of a major 3rd varies enormously: about 18 Hz around C2 (65 Hz) but about 580 Hz around C6 (1047 Hz). The physical distance explodes, but the perceived distance stays constant.", spectrum: 'hz' }
   ],
   5: [
     { text: "The perfect 4th (ratio 4:3) was considered the most consonant interval in medieval music — more important than the 3rd. Rules of counterpoint were built around it.", spectrum: 'cultural' },
     { text: "The 4th is an 'inverted 5th' — flip any perfect 5th and you get a 4th. Together they divide the octave into two interlocking consonances.", spectrum: 'log' },
-    { text: "Car horns in the US are typically tuned to a perfect 4th (F and B♭). The interval is piercing yet harmonically stable — perfect for alerts.", spectrum: 'mel' }
+    { text: "Car horns in the US are typically tuned to a perfect 4th (F and B♭). The interval is piercing yet harmonically stable — perfect for alerts.", spectrum: 'mel' },
+    { text: "In Hz, a perfect 4th above A4 (440 Hz) is D5 (587.33 Hz) — a gap of 147 Hz. This beat frequency is too fast for your ear to track as pulses; instead you hear harmonic fusion.", spectrum: 'hz' },
+    { text: "On the Bark scale, a perfect 4th always spans more than 2 critical bands in the mid-range. This comfortable separation is why medieval organum — singing in parallel 4ths — sounded stable and clear.", spectrum: 'bark' },
+    { text: "The Mel-scale distance of a perfect 4th shrinks as you go higher in register. At A2 it's about 150 mel; at A5 it's about 100 mel. This is why high-register 4ths sound 'thinner' than low ones.", spectrum: 'mel' }
   ],
   6: [
     { text: "The tritone (ratio 45:32) divides the octave exactly in half on the log scale. Medieval musicians called it 'Diabolus in Musica' — the Devil's interval.", spectrum: 'cultural' },
     { text: "The tritone is unique: it's its own inversion. Go up 6 semitones or down 6 semitones — you arrive at the same interval class.", spectrum: 'log' },
-    { text: "Emergency vehicle sirens often alternate between notes a tritone apart because the interval is maximally attention-grabbing to the human auditory system.", spectrum: 'mel' }
+    { text: "Emergency vehicle sirens often alternate between notes a tritone apart because the interval is maximally attention-grabbing to the human auditory system.", spectrum: 'mel' },
+    { text: "In Hz, the tritone has the ratio √2:1 (≈1.4142). This irrational number means the frequencies never align in a repeating pattern — the waveform literally never repeats, which is the physical basis of its instability.", spectrum: 'hz' },
+    { text: "On the Bark scale, a tritone sits at the boundary between 'clearly separated' and 'interacting'. It's dissonant not because of critical-band roughness but because of the lack of harmonic alignment.", spectrum: 'bark' },
+    { text: "Perceptually, the tritone spans exactly half a perceived octave on the Mel scale only near 1000 Hz. At other registers, this 'half' is stretched or compressed — one reason the tritone sounds different across the keyboard.", spectrum: 'mel' }
   ],
   7: [
     { text: "The perfect 5th (ratio 3:2) is the most consonant interval after the octave. It's the foundation of Pythagorean tuning and the Circle of Fifths.", spectrum: 'cultural' },
-    { text: "When you stack perfect 5ths, you generate all 12 notes of the chromatic scale — but you overshoot by 23.5 cents (the 'Pythagorean comma'). This tiny error shaped all of Western tuning history.", spectrum: 'cultural' },
-    { text: "Most power chords in rock music are bare 5ths. The interval is so consonant that distortion doesn't destroy its clarity — unlike 3rds, which turn muddy.", spectrum: 'bark' }
+    { text: "When you stack perfect 5ths, you generate all 12 notes of the chromatic scale — but you overshoot by 23.5 cents (the 'Pythagorean comma'). This tiny error shaped all of Western tuning history.", spectrum: 'log' },
+    { text: "Most power chords in rock music are bare 5ths. The interval is so consonant that distortion doesn't destroy its clarity — unlike 3rds, which turn muddy.", spectrum: 'bark' },
+    { text: "In Hz, a perfect 5th has a 3:2 ratio — meaning for every 2 cycles of the lower note, the upper completes exactly 3. This simple phase relationship is visible as a clean, repeating waveform pattern.", spectrum: 'hz' },
+    { text: "On the log scale, the 5th spans 700 cents — close to 7/12 of an octave. This near-equal division is why the Circle of Fifths nearly closes after 12 steps.", spectrum: 'log' },
+    { text: "The Mel-scale distance of a 5th is psychoacoustically 'comfortable' — wide enough to be clearly two notes, but harmonically related enough to fuse into a stable unit. This is the perceptual basis of power chord 'punch'.", spectrum: 'mel' }
   ],
   8: [
     { text: "The minor 6th (ratio 8:5) is the inversion of the major 3rd. It has a bittersweet quality — consonant but with an underlying tension.", spectrum: 'log' },
     { text: "The opening interval of 'Love Story' is a minor 6th. Composers use it for longing and nostalgia because it resolves 'inward' toward the 5th.", spectrum: 'mel' },
-    { text: "On the Mel scale, the minor 6th covers a substantial perceptual distance — your brain perceives it as a 'wide' interval even in the bass register.", spectrum: 'mel' }
+    { text: "On the Mel scale, the minor 6th covers a substantial perceptual distance — your brain perceives it as a 'wide' interval even in the bass register.", spectrum: 'mel' },
+    { text: "In Hz, the 8:5 ratio means that every 5 cycles of the lower note align with 8 of the upper. This 5-cycle pattern is long enough that your ear needs time to 'lock on' — explaining the interval's ambiguous character.", spectrum: 'hz' },
+    { text: "On the Bark scale, a minor 6th separates the fundamentals by 4–6 critical bands. Your ear processes them as fully independent pitch events, with no roughness at the fundamental level.", spectrum: 'bark' }
   ],
   9: [
     { text: "The major 6th (ratio 5:3) is used in the 'NBC chime' — three notes spanning a major 6th. It's one of the most recognisable sonic logos ever created.", spectrum: 'mel' },
     { text: "The major 6th is the inversion of the minor 3rd. Inverting intervals swaps their emotional quality: the 'sad' minor 3rd becomes the 'warm' major 6th.", spectrum: 'log' },
-    { text: "In the Bark scale, a major 6th spans about 5–7 critical bands, meaning your ear processes both notes with completely independent neural channels.", spectrum: 'bark' }
+    { text: "In the Bark scale, a major 6th spans about 5–7 critical bands, meaning your ear processes both notes with completely independent neural channels.", spectrum: 'bark' },
+    { text: "In Hz, the 5:3 ratio produces a wave pattern that repeats every 3 cycles of the upper note. This moderate complexity gives the major 6th its characteristic 'warm but open' quality.", spectrum: 'hz' },
+    { text: "On the Mel scale, a major 6th spans roughly 250–400 mel depending on register — nearly half a perceived octave. This wide perceptual spread is why it works so well for melodic leaps.", spectrum: 'mel' }
   ],
   10: [
     { text: "The minor 7th (ratio 9:5) is the interval of dominant 7th chords — the most 'restless' chord in Western harmony, always wanting to resolve.", spectrum: 'log' },
     { text: "Blues music is built on minor 7ths. The 'blue note' is actually a pitch-bent minor 7th that doesn't exist in standard 12-TET tuning.", spectrum: 'cultural' },
-    { text: "The minor 7th produces a beating rate that's fast enough to be perceived as 'buzzy' but slow enough to still hear both notes — right at the roughness boundary.", spectrum: 'bark' }
+    { text: "The minor 7th produces a beating rate that's fast enough to be perceived as 'buzzy' but slow enough to still hear both notes — right at the roughness boundary.", spectrum: 'bark' },
+    { text: "In Hz, the minor 7th ratio of 9:5 creates a complex interference pattern that takes 5 cycles to repeat. This is long enough that your ear perceives harmonic ambiguity — the interval 'leans' toward resolution.", spectrum: 'hz' },
+    { text: "On the Mel scale, the minor 7th is perceptually almost as wide as an octave. This is why dominant 7th chords feel 'open' and 'spacious' despite their harmonic tension.", spectrum: 'mel' }
   ],
   11: [
     { text: "The major 7th (ratio 15:8) is simultaneously dissonant and beautiful. Jazz musicians call it the 'jazz interval' — it defines the maj7 chord's dreamy quality.", spectrum: 'mel' },
     { text: "The major 7th is only one semitone from the octave, creating strong 'leading tone' pull — your brain expects resolution to the octave so strongly it's almost physical.", spectrum: 'mel' },
-    { text: "Ravel and Debussy used stacked major 7ths to create the 'impressionist' sound — the interval's harmonic complexity produces rich, shimmering overtone interactions.", spectrum: 'bark' }
+    { text: "Ravel and Debussy used stacked major 7ths to create the 'impressionist' sound — the interval's harmonic complexity produces rich, shimmering overtone interactions.", spectrum: 'bark' },
+    { text: "On the log scale, 1100 cents puts the major 7th just 100 cents shy of the octave. This near-miss is musically potent: your brain hears it as an 'almost octave' that demands completion.", spectrum: 'log' },
+    { text: "In Hz, the 15:8 ratio creates an interference pattern that takes 8 cycles to repeat — among the most complex of the simple intervals. This long cycle is what gives the major 7th its shimmer.", spectrum: 'hz' },
+    { text: "On the Bark scale, the major 7th's fundamentals are far apart (6+ critical bands), yet their overtone series create dense cross-note interference. This paradox — clean fundamentals, rough harmonics — is the maj7's signature.", spectrum: 'bark' }
   ],
   12: [
     { text: "The octave (ratio 2:1) is the most fundamental interval in all of music. Every culture on Earth recognises octave equivalence — a C4 and C5 are perceived as the 'same note'.", spectrum: 'cultural' },
     { text: "Octave equivalence is hardwired into your auditory cortex. Neurons that fire for 440 Hz also fire for 880 Hz — they literally share neural circuitry.", spectrum: 'mel' },
-    { text: "When you double a frequency, every harmonic of the lower note aligns perfectly with every other harmonic of the upper note. Zero beating. Perfect consonance.", spectrum: 'bark' }
+    { text: "When you double a frequency, every harmonic of the lower note aligns perfectly with every other harmonic of the upper note. Zero beating. Perfect consonance.", spectrum: 'bark' },
+    { text: "On the log scale, the octave is exactly 1200 cents — the fundamental unit of musical measurement. All other intervals are defined as fractions of this distance.", spectrum: 'log' },
+    { text: "In Hz, the octave above A4 (440 Hz) is A5 (880 Hz) — a 440 Hz gap. But the octave above A1 (55 Hz) is A2 (110 Hz) — only 55 Hz. Same interval, 8× less physical energy.", spectrum: 'hz' },
+    { text: "On the Mel scale, octaves are not equal: a low-register octave spans about 500 mel, while a high-register one spans only about 250 mel. Your brain 'compresses' upper octaves.", spectrum: 'mel' }
   ],
 };
 
