@@ -621,7 +621,7 @@ interface PsychoChartProps {
 
 const PsychoChart = ({
   title, shortDesc, longDesc, dataKey,
-  activeHarmonics, harmonicsX, harmonicsY, stDiff, midiX, midiY,
+  activeHarmonics, harmonicsX, harmonicsY, stDiff, midiX, midiY, freqX, freqY,
   hoveredHarm, highlightedPair, isLocked, chartData,
   setActiveSpectrum, handleChartHover, handleChartClick
 }: PsychoChartProps) => {
