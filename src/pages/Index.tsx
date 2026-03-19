@@ -729,8 +729,43 @@ const PsychoChart = ({
                 })}
               </LineChart>
             </ResponsiveContainer>
-            <div className="pointer-events-none absolute inset-0 z-10">
-              <div className="relative h-full w-full" style={{ padding: '0 8px' }}>
+            
+            {/* Mel Warping Visualization */}
+            {dataKey === 'mel' && (
+              <div className="absolute inset-y-0 left-[14px] right-[14px] pointer-events-none z-0 overflow-visible">
+                <svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none">
+                  {activeHarmonics.map(h => {
+                    const pLog = getPct(h.freq, 'log');
+                    const pMel = getPct(h.freq, 'mel');
+                    const isHighlighted = !highlightedPair || h.id === highlightedPair.id1 || h.id === highlightedPair.id2;
+                    const isHovered = hoveredHarm?.id === h.id;
+                    const isLockedMatch = isLocked && isHovered;
+                    const opacity = isHighlighted ? (isHovered ? 0.6 : 0.25) : 0.05;
+                    const isNoteY = h.note === 'Y';
+                    
+                    // Sinusoidal cubic bezier curve
+                    const edgeY = isNoteY ? 10 : 90; // Stop slightly before the absolute edge to align cleanly with the circular labels
+                    const ctrlY = isNoteY ? 30 : 70;
+                    
+                    return (
+                      <path
+                        key={`warp-${h.id}`}
+                        d={`M ${pLog} 50 C ${pLog} ${ctrlY}, ${pMel} ${ctrlY}, ${pMel} ${edgeY}`}
+                        fill="none"
+                        stroke={isLockedMatch ? COLOR_LOCKED : h.color}
+                        strokeWidth={isLockedMatch ? 1.5 : 0.5}
+                        strokeDasharray={isLockedMatch ? "4 2" : "2 1"}
+                        strokeOpacity={opacity}
+                        className={isLockedMatch ? 'animate-dash-flow' : ''}
+                      />
+                    );
+                  })}
+                </svg>
+              </div>
+            )}
+
+            <div className="pointer-events-none absolute inset-y-0 left-[14px] right-[14px] z-10">
+              <div className="relative h-full w-full">
                 {activeHarmonics.map(h => {
                   const p = getPct(h.freq, dataKey);
                   const isHighlighted = h.id === highlightedPair?.id1 || h.id === highlightedPair?.id2 || !highlightedPair;

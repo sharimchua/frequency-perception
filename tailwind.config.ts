@@ -83,10 +83,19 @@ export default {
             height: "0",
           },
         },
+        "dash-flow": {
+          from: {
+            strokeDashoffset: "20",
+          },
+          to: {
+            strokeDashoffset: "0",
+          },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "dash-flow": "dash-flow 1s linear infinite",
       },
     },
   },
