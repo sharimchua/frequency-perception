@@ -4,7 +4,7 @@ import { Waves, AlertTriangle, X, Lightbulb, ExternalLink, ChevronLeft, ChevronR
 import {
   MIN_F, MAX_F, HARMONIC_COUNT, INTERVALS, INTERVAL_FACTS,
   midiToFreq, freqToMidi, toBark, toMel, getNoteName, getClosest12TET, getVal, getPct,
-  getHarmonicFacts, getContextualFacts, getInterferenceFacts, getCulturalFacts, TUNING_SYSTEMS, generateTuningFrequencies,
+  getHarmonicFacts, getContextualFacts, getInterferenceFacts, getAmbientFacts, getCulturalFacts, TUNING_SYSTEMS, generateTuningFrequencies,
   type Harmonic, type Interference, type TuningSystem
 } from '@/lib/frequency-utils';
 
