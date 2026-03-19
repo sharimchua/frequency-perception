@@ -608,6 +608,8 @@ interface PsychoChartProps {
   stDiff: number;
   midiX: number;
   midiY: number;
+  freqX: number;
+  freqY: number;
   hoveredHarm: Harmonic | null;
   highlightedPair: { id1: string; id2: string } | null;
   isLocked: boolean;
