@@ -254,10 +254,10 @@ export default function Index() {
             </a>
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-mono-display text-base font-black tracking-widest text-foreground">FREQUENCY ANALYSER</span>
+                <span className="font-mono-display text-base font-black tracking-widest text-foreground">FREQUENCY PERCEPTION</span>
               </div>
               <div className="flex items-center gap-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wider opacity-60">
-                <span>A <a href="https://midlifemuso.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline hover:text-white transition-colors">Midlife Muso</a> Production</span>
+                <span>A <a href="https://midlifemuso.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline hover:text-white transition-colors">Midlife Muso</a> Tool</span>
               </div>
             </div>
           </div>
