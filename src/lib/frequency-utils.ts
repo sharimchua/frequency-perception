@@ -20,7 +20,185 @@ export const INTERVALS = [
   { name: 'P8', semi: 12, full: 'Octave' },
 ];
 
+// ─────────────────────────────────────────────────────────────────
+// Tuning System Architectures
+// ─────────────────────────────────────────────────────────────────
+
+export interface TuningTone {
+  degree: number;      // 0-based index within the period
+  name: string;        // e.g., 'C', 'P5', 'Quarter-tone sharp'
+  cents: number;       // Relative to root
+  ratioStr?: string;   // Geometric derivation e.g., '3/2'
+  ratioVal?: number;   // 1.5
+}
+
+export interface TuningSystem {
+  id: string;
+  name: string;
+  description: string;
+  history: string;
+  pros: string[];
+  cons: string[];
+  periodCents: number; // Usually 1200 for an octave
+  layout: '12-tone' | 'linear'; // '12-tone' renders piano; 'linear' renders circles
+  tones: TuningTone[];
+}
+
+export const TUNING_SYSTEMS: Record<string, TuningSystem> = {
+  '12tet': {
+    id: '12tet',
+    name: '12-Tone Equal Temperament',
+    description: 'The standard tuning system of modern Western music, dividing the octave into 12 mathematically equal semitones.',
+    history: 'Developed through the 17th and 18th centuries (notably by theorists like Simon Stevin and popularized by J.S. Bach), 12-TET was a technological solution to the "comma" problem — the mathematical impossibility of stacking pure fifths to perfectly reach an octave. It replaced earlier systems like Meantone or Well-Temperament to allow instruments like the piano to play in all 24 keys with equal (if slightly imperfect) resonance.',
+    pros: [
+      'Perfect Transposition: Every key sounds identical in character.',
+      'Harmonic Freedom: Facilitates complex modularity and chromaticism.',
+      'Instrument Standardization: Simplified the manufacturing of fixed-pitch instruments.'
+    ],
+    cons: [
+      'No Pure Intervals: Except for the octave, every interval is slightly "out of tune" compared to the natural overtone series.',
+      'Loss of Key Color: Earlier temperaments gave different keys unique emotional "flavors" which 12-TET homogenizes.'
+    ],
+    periodCents: 1200,
+    layout: '12-tone',
+    tones: [
+      { degree: 0, name: 'Unison', cents: 0, ratioVal: 1, ratioStr: '1/1' },
+      { degree: 1, name: 'Minor 2nd', cents: 100, ratioVal: 1.059463 },
+      { degree: 2, name: 'Major 2nd', cents: 200, ratioVal: 1.125, ratioStr: '9/8' },
+      { degree: 3, name: 'Minor 3rd', cents: 300, ratioVal: 1.18518, ratioStr: '32/27' },
+      { degree: 4, name: 'Major 3rd', cents: 400, ratioVal: 1.25, ratioStr: '5/4' },
+      { degree: 5, name: 'Perfect 4th', cents: 500, ratioVal: 1.333333, ratioStr: '4/3' },
+      { degree: 6, name: 'Tritone', cents: 600, ratioVal: 1.414214 },
+      { degree: 7, name: 'Perfect 5th', cents: 700, ratioVal: 1.5, ratioStr: '3/2' },
+      { degree: 8, name: 'Minor 6th', cents: 800, ratioVal: 1.6, ratioStr: '8/5' },
+      { degree: 9, name: 'Major 6th', cents: 900, ratioVal: 1.666667, ratioStr: '5/3' },
+      { degree: 10, name: 'Minor 7th', cents: 1000, ratioVal: 1.777778, ratioStr: '16/9' },
+      { degree: 11, name: 'Major 7th', cents: 1100, ratioVal: 1.875, ratioStr: '15/8' },
+    ]
+  },
+  '24tet': {
+    id: '24tet',
+    name: '24-TET (Quarter Tones)',
+    description: 'A microtonal expansion of equal temperament that divides the octave into 24 equal steps, introducing the "Quarter Tone".',
+    history: 'While frequently utilized by 20th-century avant-garde Western composers (like Ivan Wyschnegradsky and Alois Hába), 24-TET is often used as a Western notation-approximation for Maqam systems in Arabic and Persian music, which utilize neutral seconds and thirds that fall between the keys of a standard piano.',
+    pros: [
+      'Microtonal Precision: Allows for much more nuanced melodic shading.',
+      'Cultural Bridge: Can approximate non-Western scales (like Arabic Maqams) on digital instruments.',
+      'Symmetry: Retained the ease of 12-TET transposition while doubling the available pitch palette.'
+    ],
+    cons: [
+      'Increasing Complexity: Doubling the notes makes practical performance and notation significantly harder.',
+      'Acoustic Friction: Quarter tones can be perceived by untrained Western ears as "out of tune" rather than as discrete new notes.'
+    ],
+    layout: 'linear',
+    periodCents: 1200,
+    tones: Array.from({ length: 24 }).map((_, i) => ({
+      degree: i,
+      name: i % 2 === 0 ? ['Unison','m2','M2','m3','M3','P4','TT','P5','m6','M6','m7','M7'][i/2] : `QT ${Math.floor(i/2) + 1}`,
+      cents: i * 50,
+      ratioVal: Math.pow(2, (i * 50) / 1200),
+      ratioStr: i === 0 ? '1/1' : undefined
+    }))
+  }
+};
+
+export interface GridFrequency {
+  degree: number;
+  octave: number;
+  freq: number;
+  tone: TuningTone;
+}
+
+export const generateTuningFrequencies = (tuning: TuningSystem, anchorFreq: number = 261.625565): GridFrequency[] => {
+  const freqs: GridFrequency[] = [];
+  
+  // Go down
+  let currentOctave = -1;
+  while (true) {
+    let octaveFreqs = tuning.tones.map(t => {
+      const centsOffset = (currentOctave * tuning.periodCents) + t.cents;
+      const freq = anchorFreq * Math.pow(2, centsOffset / 1200);
+      return { degree: t.degree, octave: currentOctave, freq, tone: t };
+    });
+    if (octaveFreqs[octaveFreqs.length - 1].freq < MIN_F) {
+      freqs.unshift(...octaveFreqs.filter(f => f.freq >= MIN_F));
+      break;
+    }
+    freqs.unshift(...octaveFreqs);
+    currentOctave--;
+  }
+
+  // Go up (including octave 0)
+  currentOctave = 0;
+  while (true) {
+    let octaveFreqs = tuning.tones.map(t => {
+      const centsOffset = (currentOctave * tuning.periodCents) + t.cents;
+      const freq = anchorFreq * Math.pow(2, centsOffset / 1200);
+      return { degree: t.degree, octave: currentOctave, freq, tone: t };
+    });
+    if (octaveFreqs[0].freq > MAX_F) break;
+    freqs.push(...octaveFreqs.filter(f => f.freq <= MAX_F));
+    currentOctave++;
+  }
+  
+  return freqs;
+};
+
+
 export const midiToFreq = (n: number) => 440 * Math.pow(2, (n - 69) / 12);
+export interface HarmonicFact {
+  text: string;
+  label?: string; // e.g. "H3 — Theoretical"
+  spectrum?: 'hz' | 'log' | 'cultural' | 'bark' | 'mel' | null;
+}
+
+// ─────────────────────────────────────────────────────────────────
+// PEDAGOGICAL FACT GENERATORS
+// ─────────────────────────────────────────────────────────────────
+
+/**
+ * Facts about the Cultural Tuning Layer.
+ */
+export const getCulturalFacts = (tuning: TuningSystem, degree: number): HarmonicFact[] => {
+  const facts: HarmonicFact[] = [];
+  const per = tuning.tones.length;
+  const t = tuning.tones[degree % per];
+  const octaves = Math.floor(degree / per);
+
+  if (tuning.id === '12tet') {
+    facts.push({
+      text: `In 12-TET, every step is exactly 100 cents. This mathematical symmetry was a revolutionary 'hack' that allowed Western music to transpose freely across all 24 keys without the instrument sounding out of tune in certain registers.`,
+      spectrum: 'cultural'
+    });
+    if (t.ratioStr) {
+      facts.push({
+        text: `The ${t.name} here is derived from the ratio ${t.ratioStr}. In 12-TET, we intentionally 'temper' (slightly detune) this pure physical ratio to make the keyboard cycle perfectly.`,
+        spectrum: 'cultural'
+      });
+    }
+  } else if (tuning.id === '24tet') {
+    facts.push({
+      text: `24-TET introduces the Quarter Tone (50 cents). This allows the system to approximate the neutral intervals found in Arabic Maqam and Persian Dastgah music, which feel 'in-between' to ears trained only on 12-tone scales.`,
+      spectrum: 'cultural'
+    });
+    if (degree % 2 !== 0) {
+      facts.push({
+        text: `You have selected a Quarter Tone step. In many Eastern traditions, these aren't just 'out of tune' notes, but essential melodic points that carry specific emotional weight and heritage.`,
+        spectrum: 'cultural'
+      });
+    }
+  }
+
+  if (octaves > 0) {
+    facts.push({
+      text: `This interval spans ${octaves} octave${octaves > 1 ? 's' : ''}. Tuning systems usually 'repeat' every octave (equivalence), but the physical roughness of intervals actually changes as you move into different registers.`,
+      spectrum: 'cultural'
+    });
+  }
+
+  return facts;
+};
+
 export const freqToMidi = (f: number) => 12 * Math.log2(f / 440) + 69;
 
 /**
@@ -78,79 +256,75 @@ export interface Interference {
   barkDist: number;
 }
 
-export const INTERVAL_FACTS: Record<number, string[]> = {
+export const INTERVAL_FACTS: Record<number, HarmonicFact[]> = {
   0: [
-    "Unison — two identical frequencies create constructive interference, doubling amplitude. This is why choirs and orchestral sections sound so powerful.",
-    "When two instruments play in unison, tiny tuning differences create a shimmering 'chorus' effect — this beating is actually the sum and difference of their frequencies.",
-    "The human ear can detect pitch differences as small as 3–5 cents. In unison, even these micro-deviations create perceivable texture."
+    { text: "Unison — two identical frequencies create constructive interference, doubling amplitude. This is why choirs and orchestral sections sound so powerful.", spectrum: 'hz' },
+    { text: "When two instruments play in unison, tiny tuning differences create a shimmering 'chorus' effect — this beating is actually the sum and difference of their frequencies.", spectrum: 'bark' },
+    { text: "The human ear can detect pitch differences as small as 3–5 cents. In unison, even these micro-deviations create perceivable texture.", spectrum: 'mel' }
   ],
   1: [
-    "The minor 2nd (ratio ~16:15) is the most dissonant interval — the frequencies are close enough to trigger 'roughness' on the basilar membrane of your inner ear.",
-    "In horror film scores, the minor 2nd is used extensively because its beating frequency falls in the 20–30 Hz range, triggering anxiety responses.",
-    "The semitone is the smallest interval in Western music, but in Arabic maqam, quarter-tones split it further — our 12-TET system is actually a compromise."
+    { text: "The minor 2nd (ratio ~16:15) is the most dissonant interval — the frequencies are close enough to trigger 'roughness' on the basilar membrane of your inner ear.", spectrum: 'bark' },
+    { text: "In horror film scores, the minor 2nd is used extensively because its beating frequency falls in the 20–30 Hz range, triggering anxiety responses.", spectrum: 'mel' },
+    { text: "The semitone is the smallest interval in Western music, but in Arabic maqam, quarter-tones split it further — our 12-TET system is actually a compromise.", spectrum: 'cultural' }
   ],
   2: [
-    "The major 2nd (ratio 9:8) is the interval of a whole step — the building block of major scales. Its Bark distance is about 1.5z, right at the edge of roughness.",
-    "When you sing 'Happy Birthday', the first two notes are a major 2nd apart. It's one of the most natural intervals for the human voice.",
-    "Two notes a whole tone apart create a beat frequency that's audible as a distinct wobble — this is how piano tuners verify their work."
+    { text: "The major 2nd (ratio 9:8) is the interval of a whole step — the building block of major scales. Its Bark distance is about 1.5z, right at the edge of roughness.", spectrum: 'bark' },
+    { text: "When you sing 'Happy Birthday', the first two notes are a major 2nd apart. It's one of the most natural intervals for the human voice.", spectrum: 'mel' },
+    { text: "Two notes a whole tone apart create a beat frequency that's audible as a distinct wobble — this is how piano tuners verify their work.", spectrum: 'hz' }
   ],
   3: [
-    "The minor 3rd (ratio 6:5) is the interval of sadness in Western music — but in many cultures it carries no emotional connotation at all.",
-    "Biologically, the minor 3rd falls in a 'sweet spot' on the Bark scale where our ears can distinguish both notes clearly while still perceiving their harmonic relationship.",
-    "The opening of Beethoven's 5th Symphony — 'da-da-da-DUM' — spans a minor 3rd. It's one of the most recognised intervals in music history."
+    { text: "The minor 3rd (ratio 6:5) is the interval of sadness in Western music — but in many cultures it carries no emotional connotation at all.", spectrum: 'cultural' },
+    { text: "Biologically, the minor 3rd falls in a 'sweet spot' on the Bark scale where our ears can distinguish both notes clearly while still perceiving their harmonic relationship.", spectrum: 'bark' },
+    { text: "The opening of Beethoven's 5th Symphony — 'da-da-da-DUM' — spans a minor 3rd. It's one of the most recognised intervals in music history.", spectrum: 'log' }
   ],
   4: [
-    "The major 3rd (ratio 5:4) is the interval of joy. In just intonation it's perfectly consonant; in equal temperament it's 14 cents sharp — the biggest compromise in 12-TET.",
-    "Barbershop quartets tune their major 3rds to the pure 5:4 ratio, creating audible 'combination tones' that sound like a phantom fifth voice.",
-    "Your brain processes major 3rds differently from minor 3rds — fMRI studies show distinct activation patterns in the auditory cortex for each."
+    { text: "The major 3rd (ratio 5:4) is the interval of joy. In just intonation it's perfectly consonant; in equal temperament it's 14 cents sharp — the biggest compromise in 12-TET.", spectrum: 'cultural' },
+    { text: "Barbershop quartets tune their major 3rds to the pure 5:4 ratio, creating audible 'combination tones' that sound like a phantom fifth voice.", spectrum: 'hz' },
+    { text: "Your brain processes major 3rds differently from minor 3rds — fMRI studies show distinct activation patterns in the auditory cortex for each.", spectrum: 'mel' }
   ],
   5: [
-    "The perfect 4th (ratio 4:3) was considered the most consonant interval in medieval music — more important than the 3rd. Rules of counterpoint were built around it.",
-    "The 4th is an 'inverted 5th' — flip any perfect 5th and you get a 4th. Together they divide the octave into two interlocking consonances.",
-    "Car horns in the US are typically tuned to a perfect 4th (F and B♭). The interval is piercing yet harmonically stable — perfect for alerts."
+    { text: "The perfect 4th (ratio 4:3) was considered the most consonant interval in medieval music — more important than the 3rd. Rules of counterpoint were built around it.", spectrum: 'cultural' },
+    { text: "The 4th is an 'inverted 5th' — flip any perfect 5th and you get a 4th. Together they divide the octave into two interlocking consonances.", spectrum: 'log' },
+    { text: "Car horns in the US are typically tuned to a perfect 4th (F and B♭). The interval is piercing yet harmonically stable — perfect for alerts.", spectrum: 'mel' }
   ],
   6: [
-    "The tritone (ratio 45:32) divides the octave exactly in half on the log scale. Medieval musicians called it 'Diabolus in Musica' — the Devil's interval.",
-    "The tritone is unique: it's its own inversion. Go up 6 semitones or down 6 semitones — you arrive at the same interval class.",
-    "Emergency vehicle sirens often alternate between notes a tritone apart because the interval is maximally attention-grabbing to the human auditory system."
+    { text: "The tritone (ratio 45:32) divides the octave exactly in half on the log scale. Medieval musicians called it 'Diabolus in Musica' — the Devil's interval.", spectrum: 'cultural' },
+    { text: "The tritone is unique: it's its own inversion. Go up 6 semitones or down 6 semitones — you arrive at the same interval class.", spectrum: 'log' },
+    { text: "Emergency vehicle sirens often alternate between notes a tritone apart because the interval is maximally attention-grabbing to the human auditory system.", spectrum: 'mel' }
   ],
   7: [
-    "The perfect 5th (ratio 3:2) is the most consonant interval after the octave. It's the foundation of Pythagorean tuning and the Circle of Fifths.",
-    "When you stack perfect 5ths, you generate all 12 notes of the chromatic scale — but you overshoot by 23.5 cents (the 'Pythagorean comma'). This tiny error shaped all of Western tuning history.",
-    "Most power chords in rock music are bare 5ths. The interval is so consonant that distortion doesn't destroy its clarity — unlike 3rds, which turn muddy."
+    { text: "The perfect 5th (ratio 3:2) is the most consonant interval after the octave. It's the foundation of Pythagorean tuning and the Circle of Fifths.", spectrum: 'cultural' },
+    { text: "When you stack perfect 5ths, you generate all 12 notes of the chromatic scale — but you overshoot by 23.5 cents (the 'Pythagorean comma'). This tiny error shaped all of Western tuning history.", spectrum: 'cultural' },
+    { text: "Most power chords in rock music are bare 5ths. The interval is so consonant that distortion doesn't destroy its clarity — unlike 3rds, which turn muddy.", spectrum: 'bark' }
   ],
   8: [
-    "The minor 6th (ratio 8:5) is the inversion of the major 3rd. It has a bittersweet quality — consonant but with an underlying tension.",
-    "The opening interval of 'Love Story' is a minor 6th. Composers use it for longing and nostalgia because it resolves 'inward' toward the 5th.",
-    "On the Mel scale, the minor 6th covers a substantial perceptual distance — your brain perceives it as a 'wide' interval even in the bass register."
+    { text: "The minor 6th (ratio 8:5) is the inversion of the major 3rd. It has a bittersweet quality — consonant but with an underlying tension.", spectrum: 'log' },
+    { text: "The opening interval of 'Love Story' is a minor 6th. Composers use it for longing and nostalgia because it resolves 'inward' toward the 5th.", spectrum: 'mel' },
+    { text: "On the Mel scale, the minor 6th covers a substantial perceptual distance — your brain perceives it as a 'wide' interval even in the bass register.", spectrum: 'mel' }
   ],
   9: [
-    "The major 6th (ratio 5:3) is used in the 'NBC chime' — three notes spanning a major 6th. It's one of the most recognisable sonic logos ever created.",
-    "The major 6th is the inversion of the minor 3rd. Inverting intervals swaps their emotional quality: the 'sad' minor 3rd becomes the 'warm' major 6th.",
-    "In the Bark scale, a major 6th spans about 5–7 critical bands, meaning your ear processes both notes with completely independent neural channels."
+    { text: "The major 6th (ratio 5:3) is used in the 'NBC chime' — three notes spanning a major 6th. It's one of the most recognisable sonic logos ever created.", spectrum: 'mel' },
+    { text: "The major 6th is the inversion of the minor 3rd. Inverting intervals swaps their emotional quality: the 'sad' minor 3rd becomes the 'warm' major 6th.", spectrum: 'log' },
+    { text: "In the Bark scale, a major 6th spans about 5–7 critical bands, meaning your ear processes both notes with completely independent neural channels.", spectrum: 'bark' }
   ],
   10: [
-    "The minor 7th (ratio 9:5) is the interval of dominant 7th chords — the most 'restless' chord in Western harmony, always wanting to resolve.",
-    "Blues music is built on minor 7ths. The 'blue note' is actually a pitch-bent minor 7th that doesn't exist in standard 12-TET tuning.",
-    "The minor 7th produces a beating rate that's fast enough to be perceived as 'buzzy' but slow enough to still hear both notes — right at the roughness boundary."
+    { text: "The minor 7th (ratio 9:5) is the interval of dominant 7th chords — the most 'restless' chord in Western harmony, always wanting to resolve.", spectrum: 'log' },
+    { text: "Blues music is built on minor 7ths. The 'blue note' is actually a pitch-bent minor 7th that doesn't exist in standard 12-TET tuning.", spectrum: 'cultural' },
+    { text: "The minor 7th produces a beating rate that's fast enough to be perceived as 'buzzy' but slow enough to still hear both notes — right at the roughness boundary.", spectrum: 'bark' }
   ],
   11: [
-    "The major 7th (ratio 15:8) is simultaneously dissonant and beautiful. Jazz musicians call it the 'jazz interval' — it defines the maj7 chord's dreamy quality.",
-    "The major 7th is only one semitone from the octave, creating strong 'leading tone' pull — your brain expects resolution to the octave so strongly it's almost physical.",
-    "Ravel and Debussy used stacked major 7ths to create the 'impressionist' sound — the interval's harmonic complexity produces rich, shimmering overtone interactions."
+    { text: "The major 7th (ratio 15:8) is simultaneously dissonant and beautiful. Jazz musicians call it the 'jazz interval' — it defines the maj7 chord's dreamy quality.", spectrum: 'mel' },
+    { text: "The major 7th is only one semitone from the octave, creating strong 'leading tone' pull — your brain expects resolution to the octave so strongly it's almost physical.", spectrum: 'mel' },
+    { text: "Ravel and Debussy used stacked major 7ths to create the 'impressionist' sound — the interval's harmonic complexity produces rich, shimmering overtone interactions.", spectrum: 'bark' }
   ],
   12: [
-    "The octave (ratio 2:1) is the most fundamental interval in all of music. Every culture on Earth recognises octave equivalence — a C4 and C5 are perceived as the 'same note'.",
-    "Octave equivalence is hardwired into your auditory cortex. Neurons that fire for 440 Hz also fire for 880 Hz — they literally share neural circuitry.",
-    "When you double a frequency, every harmonic of the lower note aligns perfectly with every other harmonic of the upper note. Zero beating. Perfect consonance."
+    { text: "The octave (ratio 2:1) is the most fundamental interval in all of music. Every culture on Earth recognises octave equivalence — a C4 and C5 are perceived as the 'same note'.", spectrum: 'cultural' },
+    { text: "Octave equivalence is hardwired into your auditory cortex. Neurons that fire for 440 Hz also fire for 880 Hz — they literally share neural circuitry.", spectrum: 'mel' },
+    { text: "When you double a frequency, every harmonic of the lower note aligns perfectly with every other harmonic of the upper note. Zero beating. Perfect consonance.", spectrum: 'bark' }
   ],
 };
 
 // Fun facts about specific harmonics, contextual to the spectrum being viewed
-export interface HarmonicFact {
-  text: string;
-  spectrum?: 'hz' | 'log' | 'bark' | 'mel'; // if set, only shown on this spectrum
-}
 
 export const getHarmonicFacts = (degree: number, freq: number, noteName: string): HarmonicFact[] => {
   const tet = getClosest12TET(freq);
