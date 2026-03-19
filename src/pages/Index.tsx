@@ -4,7 +4,7 @@ import { Waves, AlertTriangle, X, Lightbulb, ExternalLink, ChevronLeft, ChevronR
 import {
   MIN_F, MAX_F, HARMONIC_COUNT, INTERVALS, INTERVAL_FACTS,
   midiToFreq, freqToMidi, toBark, toMel, getNoteName, getClosest12TET, getVal, getPct,
-  getHarmonicFacts, getContextualFacts, getInterferenceFacts, getCulturalFacts, TUNING_SYSTEMS, generateTuningFrequencies,
+  getHarmonicFacts, getContextualFacts, getInterferenceFacts, getAmbientFacts, getCulturalFacts, TUNING_SYSTEMS, generateTuningFrequencies,
   type Harmonic, type Interference, type TuningSystem
 } from '@/lib/frequency-utils';
 
@@ -321,6 +321,8 @@ export default function Index() {
           setActiveSpectrum={setActiveSpectrum}
           handleChartHover={handleChartHover}
           handleChartClick={handleChartClick}
+          freqX={freqX}
+          freqY={freqY}
         />
         <PsychoChart
           title="II. Theoretical (Log)"
@@ -340,6 +342,8 @@ export default function Index() {
           setActiveSpectrum={setActiveSpectrum}
           handleChartHover={handleChartHover}
           handleChartClick={handleChartClick}
+          freqX={freqX}
+          freqY={freqY}
         />
 
         {/* III. Cultural (Tuning) */}
@@ -533,6 +537,8 @@ export default function Index() {
           setActiveSpectrum={setActiveSpectrum}
           handleChartHover={handleChartHover}
           handleChartClick={handleChartClick}
+          freqX={freqX}
+          freqY={freqY}
         />
 
         {/* Dissonance Detector */}
@@ -582,6 +588,8 @@ export default function Index() {
           setActiveSpectrum={setActiveSpectrum}
           handleChartHover={handleChartHover}
           handleChartClick={handleChartClick}
+          freqX={freqX}
+          freqY={freqY}
         />
 
         <footer className="mt-6 flex items-center justify-center gap-6 border-t border-border/40 pt-4">
@@ -608,6 +616,8 @@ interface PsychoChartProps {
   stDiff: number;
   midiX: number;
   midiY: number;
+  freqX: number;
+  freqY: number;
   hoveredHarm: Harmonic | null;
   highlightedPair: { id1: string; id2: string } | null;
   isLocked: boolean;
@@ -619,7 +629,7 @@ interface PsychoChartProps {
 
 const PsychoChart = ({
   title, shortDesc, longDesc, dataKey,
-  activeHarmonics, harmonicsX, harmonicsY, stDiff, midiX, midiY,
+  activeHarmonics, harmonicsX, harmonicsY, stDiff, midiX, midiY, freqX, freqY,
   hoveredHarm, highlightedPair, isLocked, chartData,
   setActiveSpectrum, handleChartHover, handleChartClick
 }: PsychoChartProps) => {
@@ -652,19 +662,36 @@ const PsychoChart = ({
   }, [scrubPct, dataKey]);
 
   const phaseFacts = useMemo(() => {
-    const hits = [];
-    const rawIv = INTERVAL_FACTS[stDiff] || INTERVAL_FACTS[0];
-    hits.push(...rawIv.filter(f => f.spectrum === dataKey));
+    const specific: typeof INTERVAL_FACTS[0] = [];
+    const general: typeof INTERVAL_FACTS[0] = [];
 
-    const ctx = getContextualFacts(harmonicsX, harmonicsY, stDiff, dataKey);
-    hits.push(...ctx.filter(f => f.spectrum === dataKey));
-
+    // TIER 1 (highest priority): Hovered/locked harmonic facts — most specific to current interaction
     if (hoveredHarm) {
       const noteName = hoveredHarm.note === 'X' ? getNoteName(midiX) : getNoteName(midiY);
-      hits.push(...getHarmonicFacts(hoveredHarm.degree, hoveredHarm.freq, noteName).filter(f => f.spectrum === dataKey));
+      const hFacts = getHarmonicFacts(hoveredHarm.degree, hoveredHarm.freq, noteName);
+      specific.push(...hFacts.filter(f => f.spectrum === dataKey));
+      // Also include untagged facts from harmonic analysis
+      general.push(...hFacts.filter(f => !f.spectrum));
     }
-    return hits;
-  }, [stDiff, dataKey, hoveredHarm, harmonicsX, harmonicsY, midiX, midiY]);
+
+    // TIER 2: Contextual cross-note analysis facts (specific to this spectrum)
+    const ctx = getContextualFacts(harmonicsX, harmonicsY, stDiff, dataKey);
+    specific.push(...ctx.filter(f => f.spectrum === dataKey));
+    general.push(...ctx.filter(f => !f.spectrum));
+
+    // TIER 3: Interval-specific facts for this spectrum
+    const rawIv = INTERVAL_FACTS[stDiff] || INTERVAL_FACTS[0];
+    general.push(...rawIv.filter(f => f.spectrum === dataKey));
+
+    // TIER 4 (lowest priority): Ambient register-aware facts — always available
+    const ambient = getAmbientFacts(freqX, freqY, stDiff, dataKey);
+    general.push(...ambient.filter(f => f.spectrum === dataKey));
+
+    // Specific facts first, then general, deduplicated
+    const all = [...specific, ...general];
+    const seen = new Set<string>();
+    return all.filter(f => { if (seen.has(f.text)) return false; seen.add(f.text); return true; });
+  }, [stDiff, dataKey, hoveredHarm, harmonicsX, harmonicsY, midiX, midiY, freqX, freqY]);
 
   useEffect(() => setFactIdx(0), [stDiff, hoveredHarm]);
 
